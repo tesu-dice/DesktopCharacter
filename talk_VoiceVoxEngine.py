@@ -36,7 +36,7 @@ def synthesis(speaker, query_data,max_retry):
         raise ConnectionError("音声エラー：リトライ回数が上限に到達しました。 synthesis : ", r)
 
 
-def text_to_speech(texts, speaker=8, max_retry=20):
+def text_to_speech(texts, speaker=59, max_retry=20):
     if texts==False:
         texts="ちょっと、通信状態悪いかも？"
     texts=re.split("(?<=！|。|？)",texts)
@@ -53,4 +53,6 @@ def text_to_speech(texts, speaker=8, max_retry=20):
         play_obj=wave_obj.play()
 
 if __name__ == "__main__": 
-    text_to_speech("あーし、ホロライブの「あずきダンス」大好きなんだよ！最高にハッピーで元気な曲だし、いつも気分を上げてくれるんだ。憂鬱な時や、 楽しい時間を過ごしたい時に聴くのが大好きな曲なんだ。歌詞がキャッチーで、ビートが元気づけるから、踊りたくなるよね！きっと、気合いを入れる時に最適な曲だよ！")
+    text_to_speech("テスト、テスト。　こんにちは、これはvoicevoxの音声テストです。誰がしゃべってるでしょうか？",
+                   89
+                   )
