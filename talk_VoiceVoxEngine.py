@@ -36,7 +36,7 @@ def synthesis(speaker, query_data,max_retry):
         raise ConnectionError("音声エラー：リトライ回数が上限に到達しました。 synthesis : ", r)
 
 
-def text_to_speech(texts, speaker=59, max_retry=20):
+def text_to_speech(texts, speaker=89, max_retry=20):
     if texts==False:
         texts="ちょっと、通信状態悪いかも？"
     texts=re.split("(?<=！|。|？)",texts)
