@@ -1,19 +1,30 @@
+#DesktopCharacter
 デスクトっプにキャラクターを設置、会話できるようにする。
+目標：タスク管理なども含めた秘書的な何か？
 
-main		プログラムの初期化、設定の読み込み等
-textsystem	geminiからのリマインドや感情のコマンドの読み分け、characterへの更新,UIのUpdate, Calenderからタスクや予定の取得・追加
+**プログラムの構成考え中**
+- main  
+プログラムの初期化、設定の読み込み等
+- textsystem  
+geminiからのリマインドや感情のコマンドの読み分け、characterへの更新,UIのUpdate, Calenderからタスクや予定の取得・追加
+- gemini  
+geminiAPIをたたいてセリフを取得、また、コマンドを指示した形で返してもらってキャラの状態変更
+- character  
+キャラクターの立ち絵や声、そのほかステータスの管理、保持
+- VoiceVox  
+キャラクターの音声生成
+- UI  
+ユーザへの出力
+- Calendar  
+GoogleCalendar,Taskから予定を取得、場合によっては追加によって現状の記録を残す。
 
-gemini		geminiAPIをたたいてセリフを取得、また、コマンドを指示した形で返してもらってキャラの状態変更
-
-character	キャラクターの立ち絵や声、そのほかステータスの管理、保持
-
-VoiceVox 	キャラクターの音声生成
-
-UI		ユーザへの出力
-
-Calendar	GoogleCalendar,Taskから予定を取得、場合によっては追加によって現状の記録を残す。
 
 
+
+\
+\
+\
+\
 
 
 
