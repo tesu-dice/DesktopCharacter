@@ -4,23 +4,24 @@ from tkinter import ttk  # スタイル付きウィジェットのため
 from PIL import Image, ImageTk  # 画像表示のため
 import geminiAPI 
 
-class myapp():
+class ui():
     def __init__(self, master):
         self.master = master
-        master.title("アシストキャラクター")
+        self.win = tk.Tk()
+        self.win.title("アシストキャラクター")
 
 
         # 画面サイズを取得
-        self.win_w = int(master.winfo_screenwidth()/2)
-        self.win_h = int(master.winfo_screenheight()/2)
-        master.geometry(f"{self.win_w}x{self.win_h}")
+        self.win_w = int(self.win.winfo_screenwidth()/2)
+        self.win_h = int(self.win.winfo_screenheight()/2)
+        self.win.geometry(f"{self.win_w}x{self.win_h}")
         
 
         # 画面を左右に分割
-        self.left_frame = tk.Frame(master, width=self.win_w//2, height=self.win_h)
+        self.left_frame = tk.Frame(self.win, width=self.win_w//2, height=self.win_h)
         self.left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        self.right_frame = tk.Frame(master, width=self.win_w//2, height=self.win_h)
+        self.right_frame = tk.Frame(self.win, width=self.win_w//2, height=self.win_h)
         self.right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
         # 左側のフレームにログと入力欄を配置
@@ -57,7 +58,7 @@ class myapp():
         self.input_text = tk.Entry(frame, width=5)
         self.input_text.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        self.send_button = ttk.Button(frame, text="送信", command=self.send_message)  # スタイル付きボタン
+        self.send_button = ttk.Button(frame, text="送信", command=self.send_UsertextToSystem)  # スタイル付きボタン
         self.send_button.pack(side=tk.RIGHT)
 
     def create_character_image(self, parent):
@@ -93,15 +94,14 @@ class myapp():
             # 再び編集不可に設定
             self.message_text.configure(state="disabled")
 
-    def send_message(self):
-        """メッセージ送信処理"""
+    #入力欄のテキストをシステムに送信
+    def send_UsertextToSystem(self):
         message = self.input_text.get()
         if message:
-            self.add_log("User: " + message)
-            self.input_text.delete(0, tk.END)
-            # ここでAPIにメッセージを送信する処理を追加する (geminiAPI.pyを使用)
-            ans = self.gemini.response(message)
-            self.add_log(ans)
+            input = "UserMessage: "+ message
+            self.add_log(input)
+            self.input_text.delete(0, tk.END)#入力欄初期化
+            self.master.SendMessage_UItoAI(input)#System仲介して入力送信
 
 
     def character_click(self):
@@ -110,6 +110,6 @@ class myapp():
 
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = myapp(root)
-    root.mainloop()
+    import main
+    a = main.myapp()
+    a.ui.win.mainloop()
