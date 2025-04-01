@@ -73,3 +73,4 @@ class geminiAI():
             talkVoice.text_to_speech(response.text)
             print("history")
             print(self.chat_session.history)
+            return response.text
