@@ -1,3 +1,12 @@
+"""
+GoogleCalendar, TaskのAPIから予定やタスクを取得
+　ー＞会話に反映
+
+#手が空いたら
+予定を追加という形で日記を自動で作成する。
+
+
+"""
 import datetime
 import os.path
 
@@ -9,6 +18,35 @@ from googleapiclient.errors import HttpError
 
 # スコープの設定 (予定の読み書きとタスクの読み書き)
 SCOPES = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/tasks"]
+
+class GoogleSchedule_control():
+    def __init__(self):
+            #スコープの定義
+            self.SCOPES = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/tasks"]
+            #アクセストークンの確認、APIとの接続
+            creds = None
+            if os.path.exists("token.json"):
+                creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+            if not creds or not creds.valid:
+                if creds and creds.expired and creds.refresh_token:
+                    creds.refresh(Request())
+                else:
+                    flow = InstalledAppFlow.from_client_secrets_file(
+                        "GoogleCalendarAPI.json", SCOPES
+                    )
+                    creds = flow.run_local_server(port=0)
+
+                with open("token.json", "w") as token:
+                    token.write(creds.to_json())
+            self.calendar_service = build("calendar", "v3", credentials=creds)
+            self.tasks_service = build("tasks", "v1", credentials=creds)
+    
+    #時間を参照して、numの数だけmodeの予定を取得(今日、昨日、明日、それ以降？)
+    def get_calendar(time, num=5, mode="today"):
+        calendars = []
+
+        return calendars
+
 
 
 def main():
