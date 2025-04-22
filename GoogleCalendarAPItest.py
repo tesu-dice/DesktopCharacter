@@ -25,7 +25,7 @@ class GoogleSchedule_control():
             self.SCOPES = ["https://www.googleapis.com/auth/calendar", "https://www.googleapis.com/auth/tasks"]
             #アクセストークンの確認、APIとの接続
             creds = None
-            if os.path.exists("token.json"):
+            if os.path.exists("token.json"):#認証の確認
                 creds = Credentials.from_authorized_user_file("token.json", SCOPES)
             if not creds or not creds.valid:
                 if creds and creds.expired and creds.refresh_token:
@@ -46,12 +46,21 @@ class GoogleSchedule_control():
         calendars = []
 
         return calendars
+    
+    #指定時間に予定があるかを確認する
+    def now_is_free(time_s, time_e, calendar_id ):
+        
+        return ""
+    
+        
 
 
 
 def main():
     creds = None
     if os.path.exists("token.json"):
+        #認証がある場合
+        print("GoogleCalenderAPI.py 認証確認完了")
         creds = Credentials.from_authorized_user_file("token.json", SCOPES)
 
     if not creds or not creds.valid:

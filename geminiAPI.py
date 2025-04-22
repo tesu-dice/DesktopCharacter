@@ -28,10 +28,7 @@ class geminiAI():
             # print(setting)
             # input()
 
-            #モデルの種類確認
-            for m in genai.list_models():
-                if "generateContent" in m.supported_generation_methods:
-                    print(m.name)
+            
 
             # モデルを準備
             generation_config = {"temperature":1,
@@ -66,6 +63,14 @@ class geminiAI():
                 {"role":"model","parts":["了解しました。"]}
                 ])
 
+        #googleAIの種類を羅列
+        def check_models():
+            #モデルの種類確認
+            for m in genai.list_models():
+                if "generateContent" in m.supported_generation_methods:
+                    print(m.name)
+        
+        #入力文字列をAIに送信
         def response(self, input_text):
             
             response = self.chat_session.send_message(input_text)
