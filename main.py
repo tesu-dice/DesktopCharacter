@@ -13,8 +13,11 @@ class myapp():
         self.ui = UI.ui(self)
         self.ai = geminiAPI.geminiAI()
         #voicevoxを起動
-        result = subprocess.Popen("windows-nvidia/run.exe")
-        print(result)
+        try:
+            result = subprocess.Popen("windows-nvidia/run.exe")
+        except Exception as e:
+            print("VoiceVoxEngineの実行に失敗しました。")
+            print(e)
 
     #UIで取得したテキストをAIに伝える
     def SendMessage_UItoAI(self, text):

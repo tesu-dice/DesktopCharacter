@@ -22,8 +22,8 @@ class charaimg_controller():
             image = ImageTk.PhotoImage(image)
             
             self.imgs[f] = image
-        print("\ncharacter-img_controller.py load_imgs() end")
-        print(self.imgs)
+        print("character-img_controller.py load_imgs() end")
+        #print(self.imgs)
 
 
 

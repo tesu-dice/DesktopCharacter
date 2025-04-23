@@ -70,7 +70,6 @@ class ui():
         try:
             #キャラ画像をランダムに設定
             img = self.CharacterImageManager.imgs[random.choice(list(self.CharacterImageManager.imgs))]
-            print(type(img))
             self.image_button = tk.Button(parent, image=img, bd=0, highlightthickness=0, command=self.character_click) #ボタン化
             self.image_button.pack( padx=10, pady=10)  # ボタンをフレームいっぱいに表示
             self.image_button.config(width=self.win_w, height=self.win_h)
