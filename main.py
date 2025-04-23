@@ -1,4 +1,6 @@
 """
+いろいろなプログラムの中継訳
+
 """
 
 import tkinter as tk

@@ -2,19 +2,23 @@
 import tkinter as tk
 from tkinter import ttk  # スタイル付きウィジェットのため
 from PIL import Image, ImageTk  # 画像表示のため
-import geminiAPI 
+import random #初期立ち絵をランダムに設定するため
+#プログラム同士のやり取り
+import geminiAPI
+import Character_Image_Controller
 
 class ui():
     def __init__(self, master):
         self.master = master
         self.win = tk.Tk()
         self.win.title("アシストキャラクター")
-
-
+        
         # 画面サイズを取得
         self.win_w = int(self.win.winfo_screenwidth()/2)
         self.win_h = int(self.win.winfo_screenheight()/2)
         self.win.geometry(f"{self.win_w}x{self.win_h}")
+
+        self.CharacterImageManager = Character_Image_Controller.charaimg_controller(self.win_h, self.win_w)
         
 
         # 画面を左右に分割
@@ -32,7 +36,7 @@ class ui():
         self.create_character_image(self.right_frame)
 
         self.gemini = geminiAPI.geminiAI()
-
+    
     def create_log_area(self, parent):
         """ログ表示エリアを作成"""
         frame = tk.Frame(parent)
@@ -64,13 +68,10 @@ class ui():
     def create_character_image(self, parent):
         """キャラクター画像表示エリアを作成"""
         try:
-            # 画像を読み込む (パスは適宜変更)
-            image = Image.open("character0000.png")  # 画像ファイル名を指定
-            # 画像サイズを調整 (必要に応じて)
-            image = image.resize((int(image.width *(self.win_h / image.height)), int(image.height *(self.win_h / image.height)) ))
-            #image = image.resize((self.win_w, self.win_h),Image.LANCZOS)   # サイズ調整
-            self.photo = ImageTk.PhotoImage(image)  # PhotoImageオブジェクトを保持
-            self.image_button = tk.Button(parent, image=self.photo, bd=0, highlightthickness=0, command=self.character_click) #ボタン化
+            #キャラ画像をランダムに設定
+            img = self.CharacterImageManager.imgs[random.choice(list(self.CharacterImageManager.imgs))]
+            print(type(img))
+            self.image_button = tk.Button(parent, image=img, bd=0, highlightthickness=0, command=self.character_click) #ボタン化
             self.image_button.pack( padx=10, pady=10)  # ボタンをフレームいっぱいに表示
             self.image_button.config(width=self.win_w, height=self.win_h)
 
@@ -107,6 +108,9 @@ class ui():
     def character_click(self):
         """キャラクタークリック時の処理"""
         self.add_log("キャラクターがクリックされました！")
+    
+    def update_character(self, imgname):
+        self.image_button = tk.Button(self.right_frame, image=self.CharacterImageManager.imgs[imgname])
 
 
 if __name__ == "__main__":
