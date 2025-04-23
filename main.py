@@ -4,12 +4,17 @@
 """
 
 import tkinter as tk
+import subprocess
+
 import UI
 import geminiAPI
 class myapp():
     def __init__(self):
         self.ui = UI.ui(self)
         self.ai = geminiAPI.geminiAI()
+        #voicevoxを起動
+        result = subprocess.Popen("windows-nvidia/run.exe")
+        print(result)
 
     #UIで取得したテキストをAIに伝える
     def SendMessage_UItoAI(self, text):
