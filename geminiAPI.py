@@ -12,6 +12,7 @@ import google.generativeai as genai
 import talk_VoiceVoxEngine as talkVoice
 
 class geminiAI():
+        #初期化
         def __init__(self):
             #APIkeyの設定
             f = open("myAPI.txt", "r")
@@ -79,3 +80,6 @@ class geminiAI():
             print("history")
             print(self.chat_session.history)
             return response.text
+        
+
+        
