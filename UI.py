@@ -99,9 +99,8 @@ class ui():
         message = self.input_text.get()
         if message:
             input = "UserMessage: "+ message
-            self.add_log(input)
             self.input_text.delete(0, tk.END)#入力欄初期化
-            self.master.SendMessage_UItoAI(input)#System仲介して入力送信
+            self.master.SendMessage_toAI(input)#System仲介して入力送信
 
 
     def character_click(self):
