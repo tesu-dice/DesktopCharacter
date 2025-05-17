@@ -38,7 +38,7 @@ class win_info_collector():
         print(freetime)
         print(type(freetime))
         if freetime >= 300:
-            self.lasttime = datetime.datetime.now()
+            self.time_last = datetime.datetime.now()
             return True
         else:
             return False

@@ -30,8 +30,10 @@ class myapp():
         t = "現在時刻：" + self.WinInfo.get_datetime() + "\n"
         w = "作業中窓：" + self.WinInfo.get_activate_window() + "\n"
         self.ui.add_log(t + w + text)
-        anser = self.ai.response(t + w + text)
-        self.ui.add_log(anser)
+        img , response = self.ai.response(t + w + text)
+    
+        self.ui.update_character(img)
+        self.ui.add_log(response)
 
     #状態監視の実行
     def update(self):
