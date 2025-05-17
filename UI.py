@@ -12,6 +12,7 @@ class ui():
         self.master = master
         self.win = tk.Tk()
         self.win.title("アシストキャラクター")
+        self.win.attributes("-topmost", True)
         
         # 画面サイズを取得
         self.win_w = int(self.win.winfo_screenwidth()/2)
@@ -106,9 +107,13 @@ class ui():
     def character_click(self):
         """キャラクタークリック時の処理"""
         self.add_log("キャラクターがクリックされました！")
-    
+
+    #画像名から立ち絵UIを変更。
     def update_character(self, imgname):
-        self.image_button = tk.Button(self.right_frame, image=self.CharacterImageManager.imgs[imgname])
+        self.image_button.config(image=self.CharacterImageManager.imgs[imgname])
+        
+
+
 
 
 if __name__ == "__main__":

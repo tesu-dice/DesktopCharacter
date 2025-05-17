@@ -7,12 +7,15 @@ from PIL import Image, ImageTk  # 画像表示のため
 class charaimg_controller():
     def __init__(self, win_h, win_w):
         self.win_h = win_h; self.win_w = win_w
+        self.imgs ={} #画像名：画像ファイルの辞書
+
+        
         self.load_imgs()
+        
 
     #キャラクター画像の読み取り
     def load_imgs(self):
         dir_path = "立ち絵/"
-        self.imgs ={}
         files = os.listdir(dir_path)
         #画像の名前と画像を適正サイズに変更して保存
         for f in files :
