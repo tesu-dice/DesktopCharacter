@@ -3,7 +3,6 @@
 
 """
 #ライブラリ
-import tkinter as tk
 import subprocess
 
 #プログラム
@@ -14,7 +13,7 @@ import WindowsInfoCollecter
 class myapp():
     def __init__(self):
         #初期化
-        self.ui = UI.ui(self)
+        self.ui = UI.UI(self)
         self.ai = geminiAPI.geminiAI()
         self.WinInfo = WindowsInfoCollecter.win_info_collector()
 
