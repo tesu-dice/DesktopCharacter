@@ -31,7 +31,7 @@ class myapp():
         self.ui.add_log(t + w + text)
         img , response = self.ai.response(t + w + text)
     
-        self.ui.update_character(img)
+        self.ui.update_character_image(img)
         self.ui.add_log(response)
 
     #状態監視の実行
@@ -45,10 +45,6 @@ class myapp():
 
 
 
-# print(root.winfo_geometry())
-# print(root.winfo_height(), root.winfo_width())
-# print(root.winfo_screenheight(), root.winfo_screenwidth())
-# print(root.winfo_screenmmheight(), root.winfo_screenmmwidth())
 
 print("main.py end")
 if __name__ =="__main__":

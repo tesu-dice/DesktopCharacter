@@ -1,5 +1,12 @@
 """
 キャラクターの画像の管理
+class charaimg_controller
+    キャラクターの画像を読み込んでリストとして管理する。
+    def __init__(self, win_h, win_w):
+    def load_imgs(self):
+    
+    
+
 """
 import os 
 from PIL import Image, ImageTk  # 画像表示のため

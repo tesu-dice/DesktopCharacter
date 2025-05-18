@@ -93,12 +93,12 @@ class CharacterLabel(tk.Label):
         
         self.place(x=1000, y=300)
 
+    #キャラクター画像の更新
     def update_image(self, img_name):
         """表示されているキャラクター画像を更新します。"""
         if img_name in self.character_image_manager.imgs:
             new_img_tk = self.character_image_manager.imgs[img_name]
-            self.image_widget.config(image=new_img_tk)
-            self.image_widget.image = new_img_tk  # 新しい画像への参照を保持
+            self.config(image=new_img_tk)
         else:
             print(f"エラー: 画像名 '{img_name}' は CharacterImageManager に見つかりません。")
 

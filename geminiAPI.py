@@ -10,10 +10,11 @@ VoiceVoxEngineから音声を引っ張ってくる。
 ライブラリが変わったりで仕様変更があったポイ？
 https://ai.google.dev/gemini-api/docs/quickstart?hl=ja&lang=python
 """
-import pathlib
-import textwrap
+#ライブラリの読み込み
 import google.generativeai as genai
-from google import genai as gemini
+import threading
+
+#プログラムの読み込み
 import talk_VoiceVoxEngine as talkVoice
 
 
@@ -102,16 +103,25 @@ class geminiAI():
             else:
                 past_contets = self.history
             contents = past_contets + input_content
+            
+            #会話とその記録
             response = self.model.generate_content(contents=contents)
+            self.history.append({"role": "user", "parts":[input_text]})
+            self.history.append({"role": "model", "parts":[response.text]})
 
 
 
             print(response.text)
             print(response.usage_metadata)
             
+            #会話処理
             if (response.text.find("：")):
                 parts = response.text.split("：", 1)  # "："で分割、最大分割回数1
-                talkVoice.text_to_speech(parts[1])
+                #threadを使って音声処理を並列化
+                thread = threading.Thread(target=talkVoice.text_to_speech, args=(parts[1],))
+                thread.daemon = True
+                thread.start()
+                print("thread main keeped")
                 return parts[0], parts[1]
             else:
                  return response.text
