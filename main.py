@@ -24,7 +24,7 @@ class myapp():
             print("VoiceVoxEngineの実行に失敗しました。")
             print(e)
 
-    #UIからの入力テキストをAIに伝え、UIにログを追加
+    #入力テキストをAIに伝え、UIにログを追加
     def SendMessage_toAI(self, text):
         t = "現在時刻：" + self.WinInfo.get_datetime() + "\n"
         w = "作業中窓：" + self.WinInfo.get_activate_window() + "\n"
@@ -38,8 +38,8 @@ class myapp():
     def update(self):
         print("main.py update() called")
         if self.WinInfo.check_freetime():
-            self.SendMessage_toAI("System:ユーザは以下のように作業中です。話しかけてください。")
-        self.ui.win.after(5000, self.update)
+            self.SendMessage_toAI("System:ユーザは上記のように作業中です。話しかけてください。")
+        self.ui.win.after(10000, self.update)
 
 
 
@@ -49,6 +49,6 @@ class myapp():
 print("main.py end")
 if __name__ =="__main__":
     app = myapp()
-    app.ui.win.after(500, app.update)
+    app.ui.after(500, app.update)
 
-    app.ui.win.mainloop()
+    app.ui.mainloop()

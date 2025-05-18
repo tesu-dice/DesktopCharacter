@@ -8,7 +8,6 @@ import win32gui
 
 class win_info_collector():
     def __init__(self):
-        print("win_info_collecter init() called")
         self.time_init = datetime.datetime.now()
         self.time_last = datetime.datetime.now()
         self.get_datetime()
@@ -35,8 +34,6 @@ class win_info_collector():
     def check_freetime(self):
         freetime =  datetime.datetime.now() - self.time_last
         freetime = freetime.seconds
-        print(freetime)
-        print(type(freetime))
         if freetime >= 300:
             self.time_last = datetime.datetime.now()
             return True
