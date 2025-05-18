@@ -13,7 +13,8 @@ from PIL import Image, ImageTk  # 画像表示のため
 
 class charaimg_controller():
     def __init__(self, win_h, win_w):
-        self.win_h = win_h; self.win_w = win_w
+        self.win_h = win_h
+        self.win_w = win_w
         self.imgs ={} #画像名：画像ファイルの辞書
 
         

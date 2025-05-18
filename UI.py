@@ -12,14 +12,20 @@ import random  # 初期立ち絵をランダムに設定するため
 import Character_Image_Controller
 
 
-class MenuFrame(tk.Frame):
+class TextFrame(tk.Frame):
     """ログ表示とユーザー入力のためのフレームです。"""
     def __init__(self, parent, send_message_callback):
         super().__init__(parent)
+        self.parent = parent
         self.send_message_callback = send_message_callback
+        self["borderwidth"] = 10
+        self["relief"] = "ridge"
 
         self._create_log_area()
         self._create_input_area()
+        self._create_distroy_button()
+
+    def _create_distroy_button(self):
         self.place(x=100, y=50)
 
 
@@ -47,6 +53,11 @@ class MenuFrame(tk.Frame):
         self.send_button = ttk.Button(input_frame, text="送信", command=self._on_send_click)
         self.send_button.pack(side=tk.RIGHT)
 
+    def _create_distroy_button(self):
+        self.destroy_button = ttk.Button(self, text="閉じる", command=self.place_forget)
+        #フレームの右上に配置
+        self.destroy_button.place(relx=1.0, rely=0.0, anchor=tk.NE)
+
     def _on_send_click(self):
         message = self.input_text.get()
         if message:
@@ -64,17 +75,23 @@ class MenuFrame(tk.Frame):
 
 class CharacterLabel(tk.Label):
     """キャラクター画像を表示するためのフレーム（ラベル/ボタン）です。"""
-    def __init__(self, parent, click_callback):
-        super().__init__(parent, bg=parent.cget("background"), activebackground=parent.cget("background"))
+    def __init__(self, master, click_callback):
+        super().__init__(master)
+        self.config(background=self.master.cget("background"))
+        self.config(activebackground=self.master.cget("background"))
         self.click_callback = click_callback
 
+        #tk.Tkの縦横のサイズを取得(適切に取得できず、1,が返される)
+        self.character_image_manager = Character_Image_Controller.charaimg_controller(win_h=self.master.winfo_screenwidth()//4, win_w=self.master.winfo_screenwidth()//4)
+        self._init_image()
+        self.place( x=self.master.winfo_screenwidth()/4*3,
+                    y=self.master.winfo_screenheight()/2
+                    )
+        
 
-        # Character_Image_Controller は主に高さを基準に画像をスケーリングします
-        self.character_image_manager = Character_Image_Controller.charaimg_controller(win_h=500, win_w=500)
-        self._create_image_widget()
 
     #ラベルの画像を初期化
-    def _create_image_widget(self):
+    def _init_image(self):
         try:
             if not self.character_image_manager.imgs:
                 print("エラー: CharacterImageManagerによって画像が読み込まれていません。")
@@ -91,7 +108,7 @@ class CharacterLabel(tk.Label):
             print(f"キャラクター画像ウィジェットの作成中にエラーが発生しました: {e}")
             self = tk.Label(self, text="画像なし", font=("Arial", 12))
         
-        self.place(x=1000, y=300)
+        
 
     #キャラクター画像の更新
     def update_image(self, img_name):
@@ -102,51 +119,76 @@ class CharacterLabel(tk.Label):
         else:
             print(f"エラー: 画像名 '{img_name}' は CharacterImageManager に見つかりません。")
 
+class ContextMenuManager:
+    def __init__(self, parent, click_callback, TF: TextFrame):
+        self.parent = parent
+        self.click_callback = click_callback
+        self.TF = TF
+        self.menu = tk.Menu(parent, tearoff=0)
+        
+        self.menu.add_command(label="会話", command=self.show_textFrame)
+        self.menu.add_command(label="終了", command=self.exit_app)
 
-class UI: # クラス名を ui から UI に変更 (Pythonの慣習に従う)
+    def show_menu(self, event):
+        self.menu.post(event.x_root, event.y_root)
+    def show_textFrame(self):
+        self.TF.place(x=self.parent.winfo_width()/2, y=self.parent.winfo_height()/2)
+        
+
+
+    def exit_app(self):
+        self.parent.destroy()
+
+
+
+class UI(tk.Tk): # クラス名を ui から UI に変更 (Pythonの慣習に従う)
     def __init__(self, master_controller): # 引数名を master から master_controller に変更
+        super().__init__()
         self.master_controller = master_controller
 
         # メインウィンドウの設定
-        self.win = tk.Tk()
-        self.win.attributes("-topmost", True)
-        self.win.overrideredirect(True) # ウィンドウのタイトルバーなどを非表示
+        self.title("デスクトップキャラクター")
+        self.attributes("-topmost", True)
+        self.overrideredirect(True) # ウィンドウのタイトルバーなどを非表示
         self.trans_color = "#888888"
-        self.win.config(background=self.trans_color)
-        self.win.attributes("-transparentcolor", self.trans_color)
-        
-        screen_width = self.win.winfo_screenwidth()
-        screen_height = self.win.winfo_screenheight()
-        self.win.geometry(f"{screen_width}x{screen_height}") # フルスクリーンに
-
+        self.config(background=self.trans_color)
+        self.attributes("-transparentcolor", self.trans_color)
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        self.geometry(f"{screen_width}x{screen_height}") # フルスクリーンに
         
         
         # CharacterLabelのインスタンス化と配置
-        self.character_label = CharacterLabel(parent=self.win, click_callback=self._handle_character_click )
+        self.character_label = CharacterLabel(self, click_callback=self._handle_character_click )
         self.character_label.bind("<Button-1>", self.start_drag)
         self.character_label.bind("<B1-Motion>", self.do_drag)
-        # MenuFrameのインスタンス化と配置
-        self.menu_frame = MenuFrame(self.win, self._handle_user_message_send)
-        self.menu_frame.bind("<Button-1>", self.start_drag)
-        self.menu_frame.bind("<B1-Motion>", self.do_drag)
-
         
 
+        # TextFrameのインスタンス化と配置
+        self.text_frame = TextFrame(self, self._handle_user_message_send)
+        self.text_frame.bind("<Button-1>", self.start_drag)
+        self.text_frame.bind("<B1-Motion>", self.do_drag)
 
+        # ContextMenuManagerのインスタンス化
+        self.context_menu_manager = ContextMenuManager(self, click_callback=self._handle_character_click, TF=self.text_frame)
+        self.character_label.bind("<Button-3>", self.context_menu_manager.show_menu)
+
+    #ユーザのメッセージ送信
     def _handle_user_message_send(self, message_from_input):
-        """MenuFrameからユーザーメッセージが送信されたときの処理"""
+        """TextFrameからユーザーメッセージが送信されたときの処理"""
         if message_from_input: # message_from_input が空でないことを確認
             formatted_message = "UserMessage: " + message_from_input
             self.master_controller.SendMessage_toAI(formatted_message) # master_controller経由で送信
 
+    #キャラクター画像クリックを
     def _handle_character_click(self):
         """キャラクタークリック時の処理"""
         self.add_log("キャラクターがクリックされました！")
 
     # --- master_controller (myapp) から呼び出される公開メソッド ---
     def add_log(self, message):
-        """ログにメッセージを追加します (MenuFrameへ委譲)。"""
-        self.menu_frame.add_log(message)
+        """ログにメッセージを追加します (TextFrameへ委譲)。"""
+        self.text_frame.add_log(message)
 
     def update_character_image(self, image_name): # メソッド名を変更: update_character -> update_character_image
         """キャラクターの表示画像を更新します (CharacterLabelへ委譲)。"""
@@ -170,4 +212,4 @@ if __name__ == "__main__":
     a = main.myapp()
     # main.py で myapp が UI インスタンスを self.ui として保持し、
     # UI クラス名が 'ui' から 'UI' に変更されたことを想定しています。
-    a.ui.win.mainloop() # main.py で UI.UI を使用してインスタンス化されていることを確認してください
+    a.ui.mainloop() # main.py で UI.UI を使用してインスタンス化されていることを確認してください

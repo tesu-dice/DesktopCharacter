@@ -29,7 +29,6 @@ class geminiAI():
 
             #会話設定
             img_names_text = self.load_imgs()
-            print(type(img_names_text))
             f= open("Character_setting.txt", encoding="utf-8")
             setting=""
             for line in f:
@@ -80,9 +79,7 @@ class geminiAI():
             import os
             dir_path = "立ち絵/"
             files = os.listdir(dir_path)
-            print(type(files))
             text = "また、表情の種類は次のようになっています。"+ str(files)
-            print(text)
             return text
             
         
