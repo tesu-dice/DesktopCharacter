@@ -5,10 +5,10 @@ class charaimg_controller
     def __init__(self, win_h, win_w):
     def load_imgs(self):
     
-    
+
 
 """
-import os 
+import os
 from PIL import Image, ImageTk  # 画像表示のため
 
 class charaimg_controller():
