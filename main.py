@@ -39,7 +39,7 @@ class myapp():
         print("main.py update() called")
         if self.WinInfo.check_freetime():
             self.SendMessage_toAI("System:ユーザは上記のように作業中です。話しかけてください。")
-        self.ui.win.after(10000, self.update)
+        self.ui.after(10000, self.update)
 
 
 
