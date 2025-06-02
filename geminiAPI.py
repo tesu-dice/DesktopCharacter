@@ -123,7 +123,6 @@ class geminiAI():
             else:
                  return response.text
         
-
         # 会話ログ表示用の関数
         def view_conversation_log(self):
             print("\n--- Full Conversation Log ---")
