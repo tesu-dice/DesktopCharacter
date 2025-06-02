@@ -1,0 +1,250 @@
+{
+  "applicationSettings": {
+    "general": {
+      "startupWindow": {
+        "name": "起動ウィンドウ",
+        "value": "main",
+        "options": ["main", "settings", "log"]
+      },
+      "language": {
+        "name": "表示言語",
+        "value": "ja",
+        "options": ["ja", "en"]
+      },
+      "autoStart": {
+        "name": "PC起動時に自動起動",
+        "value": false
+      }
+    },
+    "update": {
+      "autoCheckUpdates": {
+        "name": "アップデートを自動確認",
+        "value": true
+      }
+    },
+    "appearance": {
+      "theme": {
+        "name": "UIテーマ",
+        "value": "system",
+        "options": ["system", "light", "dark"]
+      },
+      "fontFamily": {
+        "name": "フォントファミリー",
+        "value": "Yu Gothic UI"
+      },
+      "baseFontSize": {
+        "name": "基本フォントサイズ",
+        "value": 12,
+        "min": 8,
+        "max": 24
+      },
+      "windowOpacity": {
+        "name": "ウィンドウ透明度",
+        "value": 100,
+        "min": 20,
+        "max": 100
+      }
+    }
+  },
+  "characterSettings": {
+    "display": {
+      "size": {
+        "name": "キャラクターサイズ",
+        "value": "medium",
+        "options": ["small", "medium", "large"]
+      },
+      "initialPosition": {
+        "name": "初期表示位置",
+        "value": {"x": 100, "y": 100}
+      },
+      "alwaysOnTop": {
+        "name": "常に手前に表示",
+        "value": false
+      },
+      "allowDragMove": {
+        "name": "ドラッグ移動を許可",
+        "value": true
+      },
+      "enableAnimation": {
+        "name": "アニメーションを有効化",
+        "value": true
+      }
+    },
+    "interaction": {
+      "responseStyle": {
+        "name": "応答スタイル",
+        "value": "normal",
+        "options": ["brief", "normal", "detailed"]
+      },
+      "saveLogCount": {
+        "name": "会話履歴の保存件数",
+        "value": 50,
+        "min": 10,
+        "max": 200
+      }
+    }
+  },
+  "languageModelSettings": {
+    "selectedModel": {
+      "name": "使用する言語モデル",
+      "value": "gemini",
+      "options": ["gemini", "chatgpt", "local_llm"]
+    },
+    "models": {
+      "gemini": {
+        "apiKey": {
+          "name": "Gemini APIキー",
+          "value": ""
+        },
+        "modelName": {
+          "name": "Gemini モデル名",
+          "value": "gemini-pro"
+        }
+      },
+      "chatgpt": {
+        "apiKey": {
+          "name": "ChatGPT APIキー",
+          "value": ""
+        },
+        "modelName": {
+          "name": "ChatGPT モデル名",
+          "value": "gpt-3.5-turbo"
+        }
+      }
+    }
+  },
+  "audioSettings": {
+    "tts": {
+      "defaultEngine": {
+        "name": "デフォルト音声合成エンジン",
+        "value": "voicevox",
+        "options": ["windowsNarrator", "voicevox", "none"]
+      },
+      "masterVolume": {
+        "name": "全体音量",
+        "value": 80,
+        "min": 0,
+        "max": 100
+      }
+    },
+    "engines": {
+      "windowsNarrator": {
+        "voiceModel": {
+          "name": "Windowsナレーター 音声モデル",
+          "value": "Microsoft Haruka Desktop",
+          "options": [
+            "Microsoft Haruka Desktop", "Microsoft Ayumi Desktop", "Microsoft Ichiro Desktop"
+          ]
+        },
+        "readingSpeed": {
+          "name": "Windowsナレーター 読み上げ速度",
+          "value": 5,
+          "min": 1,
+          "max": 10
+        }
+      },
+      "voicevox": {
+        "voiceModel": {
+          "name": "VoiceVox 音声モデル",
+          "value": "ずんだもん",
+          "options": ["ずんだもん", "四国めたん", "春日部つむぎ"]
+        },
+        "readingSpeed": {
+          "name": "VoiceVox 読み上げ速度",
+          "value": 5,
+          "min": 1,
+          "max": 10
+        },
+        "apiEndpoint": {
+          "name": "VoiceVox APIエンドポイント",
+          "value": "http://127.0.0.1:50021"
+        }
+      }
+    }
+  },
+  "windowSettings": {
+    "mainWindow": {
+      "textFontSize": {
+        "name": "メインウィンドウ フォントサイズ",
+        "value": 12,
+        "min": 8,
+        "max": 24
+      },
+      "size": {
+        "name": "メインウィンドウ サイズ",
+        "value": {"width": 350, "height": 500},
+        "min": {"width": 200, "height": 300},
+        "max": {"width": 1920, "height": 1080}
+      }
+    },
+    "settingsWindow": {
+      "size": {
+        "name": "設定ウィンドウ サイズ",
+        "value": {"width": 600, "height": 400},
+        "min": {"width": 400, "height": 300},
+        "max": {"width": 1280, "height": 960}
+      }
+    },
+    "logWindow": {
+      "textFontSize": {
+        "name": "ログウィンドウ フォントサイズ",
+        "value": 10,
+        "min": 8,
+        "max": 20
+      },
+      "size": {
+        "name": "ログウィンドウ サイズ",
+        "value": {"width": 500, "height": 700},
+        "min": {"width": 300, "height": 400},
+        "max": {"width": 1920, "height": 1080}
+      }
+    }
+  },
+  "startupWindow": {
+    "windowSelection":{
+      "name": "windowSelection",
+      "value": "main",
+      "options": [
+        "main",
+        "setting",
+        "history"
+      ]
+    }
+  },
+  "otherSettings": {
+    "geminiAPIKey": {
+      "name": "geminiAPIKey",
+      "value": ""
+    },
+    "characterSize": {
+      "name": "characterSize",
+      "value": "medium",
+      "options": [
+        "small",
+        "medium",
+        "large"
+      ]
+    },
+    "textFontSize": {
+      "name": "textFontSize",
+      "value": 12,
+      "min": 8,
+      "max": 24
+    },
+    "textWindowSize": {
+      "name": "textWindowSize",
+      "value": {
+        "width": 800,
+        "height": 600
+      },
+      "min": {
+        "width": 400,
+        "height": 300
+      },
+      "max": {
+        "width": 1920,
+        "height": 1080
+      }
+    }
+  }
+}

@@ -25,7 +25,8 @@ def get_SAPIVoice_names():
 
 
 #テキストをモデル名、速度に合わせて読み上げ。
-def text_to_speech(text, voice_name = "sayaka", rate= 0):
+#読み上げる文字列、会話に使用するモデル名、読み上げ速度(-10.0~10.0)
+def text_to_speech(text, voice_name = "sayaka", rate= 2.0):
     print(f"windowsNarrator.py text_to_speech(), text={text}, voice_name={voice_name}, rate-{rate}")
     sapi = win32com.client.Dispatch("SAPI.SpVoice")
     try:
@@ -58,10 +59,20 @@ def text_to_speech(text, voice_name = "sayaka", rate= 0):
 if __name__ == "__main__":
     models = get_SAPIVoice_names()
     print(models)
-    for s in models :
-        text_to_speech("こんにちは、これはSAPIを使った音声読み上げのテストです。", s )
-    
-
+    #2chのyoutubeShortsぽい読み上げテスト
+    text_to_speech("とある会社の駐車場で休憩していた２人がいました。", models[0])
+    text_to_speech("タバコ吸ってもよろしいですか。", models[2])
+    text_to_speech("どうぞ。ところで１日に何本くらいお吸いに？", models[1])
+    text_to_speech("ふた箱くらいですね。", models[2])
+    text_to_speech("喫煙年数はどれくらいですか？", models[1])
+    text_to_speech("30年くらいですね。", models[2])
+    text_to_speech("なるほど。あそこにベンツが停まってますね。", models[1])
+    text_to_speech("停まってますね。", models[2])
+    text_to_speech("もしあなたが煙草を吸わなければ、", models[1])
+    text_to_speech("ちくわ大明神", models[3])
+    text_to_speech("あれくらい買えたんですよ。", models[1])
+    text_to_speech("あれは私のベンツですけど。", models[2])
+    text_to_speech("誰だ今の", models[1])
     
 
         
