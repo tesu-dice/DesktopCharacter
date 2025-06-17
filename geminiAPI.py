@@ -15,12 +15,17 @@ import google.generativeai as genai
 import threading
 
 #プログラムの読み込み
-import talk_VoiceVoxEngine as talkVoice
+import talk_VoiceVoxEngine 
+import talk_WindowsNarratorManager 
+from config_controller import UserSettings
+
+
 
 
 class geminiAI():
         #初期化
-        def __init__(self):
+        def __init__(self, usersetting:UserSettings):
+            self.usersetting = usersetting
             #APIkeyの設定
             f = open("myAPI.txt", "r")
             yourAPIkey = f.readline()
@@ -144,6 +149,18 @@ class geminiAI():
                     display_content = display_content[:97] + "..."
                 print(f"  {role}: \"{display_content}\"")
             print("-----------------------------\n")
+
+        def speech_text(self, text):
+            mode = self.usersetting.get_setting_value("VoiceSettings.engine")
+            if(mode == "None"):
+                return
+            elif(mode == "WindowsNarrator"):
+                model_description = self.usersetting.get_setting_value("VoiceSettings.windowsNarrator")
+                talk_WindowsNarratorManager.text_to_speech(text, model_description)
+            elif(mode == "VoiceVox"):
+                chosenvalue = self.usersetting.get_setting_value("VoiceSettings.VOICEVOX")
+                id = chosenvalue.split("=")[-1]
+                talk_VoiceVoxEngine.text_to_speech(text, int(id))
 
         
 
