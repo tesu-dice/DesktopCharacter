@@ -120,7 +120,7 @@ class geminiAI():
             if (response.text.find("：")):
                 parts = response.text.split("：", 1)  # "："で分割、最大分割回数1
                 #threadを使って音声処理を並列化
-                thread = threading.Thread(target=talkVoice.text_to_speech, args=(parts[1],))
+                thread = threading.Thread(target=self.speech_text, args=(parts[1],))
                 thread.daemon = True
                 thread.start()
                 print("thread main keeped")
