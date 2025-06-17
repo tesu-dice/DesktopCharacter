@@ -1,22 +1,25 @@
 """
 いろいろなプログラムの中継訳
-
 """
 #ライブラリ
 import subprocess
 
 #プログラム
-import UI
+import UI_main
 import geminiAPI
 import WindowsInfoCollecter
+import config_controller
 
 class myapp():
     def __init__(self):
         #初期化
-        self.ui = UI.UI(self)
-        self.ai = geminiAPI.geminiAI()
+            #ユーザで他の読み込み
+        self.setting = config_controller.read_configfile("config.json")
+        if self.setting is None:
+            print("コンフィグファイルの読み込みに失敗しました。")
+        self.ai = geminiAPI.geminiAI(self.setting)
         self.WinInfo = WindowsInfoCollecter.win_info_collector()
-
+        self.ui = UI_main.UI(self, self.setting)
         #voicevoxを起動
         try:
             result = subprocess.Popen("windows-nvidia/run.exe")
@@ -24,15 +27,24 @@ class myapp():
             print("VoiceVoxEngineの実行に失敗しました。")
             print(e)
 
+    def reboot_app(self):
+        self.ui.destroy()
+        self.__init__()
+
+
+
     #入力テキストをAIに伝え、UIにログを追加
     def SendMessage_toAI(self, text):
         t = "現在時刻：" + self.WinInfo.get_datetime() + "\n"
         w = "作業中窓：" + self.WinInfo.get_activate_window() + "\n"
-        self.ui.add_log(t + w + text)
+        # ユーザーメッセージのログ追加は TalkWindow 側で行う
+        # self.ui.add_log(t + w + text) # この行は不要になりました
+
         img , response = self.ai.response(t + w + text)
-    
+
         self.ui.update_character_image(img)
-        self.ui.add_log(response)
+        if self.ui.talk_window and self.ui.talk_window.winfo_exists() and self.ui.talk_window.winfo_ismapped():
+             self.ui.talk_window.add_log("AI: " + response) # AI応答を TalkWindow に追加
 
     #状態監視の実行
     def update(self):
@@ -44,11 +56,12 @@ class myapp():
 
 
 
-
-
-print("main.py end")
-if __name__ =="__main__":
+def start_app():
+    print("main.py start")
     app = myapp()
     app.ui.after(500, app.update)
-
     app.ui.mainloop()
+
+
+if __name__ =="__main__":
+    start_app()

@@ -14,6 +14,7 @@ class SettingItem:
                  path: str,
                  value: Any,
                  item_type: str,
+                 raw_item_data: Dict[str, Any],
                  description: str = "",
                  options: Optional[List[Any]] = None,
                  value_range: Optional[Dict[str, Any]] = None):
@@ -24,6 +25,7 @@ class SettingItem:
             path: 設定へのドット区切りパス (例: "audioSettings.windowsNarrator.voiceModel")。
             value: 設定の現在の値。
             item_type: 設定の型 ("choice", "integer", "string", "boolean", "object")。
+            raw_item_data: この設定項目に対応する元のJSONノードのデータ。
             description: 設定の人間可読な説明 (JSON の "name" フィールドから)。
             options: 利用可能な選択肢のリスト ("choice" 型の場合)。
             value_range: min/max 制約を指定する辞書。
@@ -36,26 +38,12 @@ class SettingItem:
         self.item_type: str = item_type
         self.options: List[Any] = options or []
         self.value_range: Dict[str, Any] = value_range or {}
+        self.raw_item_data: Dict[str, Any] = raw_item_data
 
     def __repr__(self) -> str:
         return (f"SettingItem(path='{self.path}', value={repr(self.value)}, "
                 f"type='{self.item_type}', description='{self.description}', "
-                f"options={self.options}, range={self.value_range})")
-
-    def to_json_leaf_structure(self) -> Dict[str, Any]:
-        """SettingItem をリーフノードに期待される JSON 構造に変換します。"""
-        leaf = {
-            "name": self.description or self.path.split('.')[-1], # description を使用、なければパスの最後の部分
-            "value": self.value
-        }
-        if self.item_type == "choice" and self.options:
-            leaf["options"] = self.options
-        if self.value_range:
-            if "min" in self.value_range:
-                leaf["min"] = self.value_range["min"]
-            if "max" in self.value_range:
-                leaf["max"] = self.value_range["max"]
-        return leaf
+                f"options={self.options}, range={self.value_range}, raw_data_keys={list(self.raw_item_data.keys())})")
 
 
 class UserSettings:
@@ -81,28 +69,15 @@ class UserSettings:
             json_min = node.get("min")
             json_max = node.get("max")
 
-            item_type = "string" # デフォルト
+            item_type = node.get("type") # デフォルト
             value_range_data = {}
 
-            if options is not None:
-                item_type = "choice"
-            elif isinstance(value, bool):
-                item_type = "boolean"
-            elif isinstance(value, int) and json_min is not None and json_max is not None:
-                item_type = "integer"
-                value_range_data = {"min": json_min, "max": json_max}
-            elif isinstance(value, dict): # textWindowSize のようなオブジェクトを処理
-                item_type = "object"
-                if json_min is not None and json_max is not None: # オブジェクトプロパティの範囲
-                    value_range_data = {"min": json_min, "max": json_max}
-            elif isinstance(value, str):
-                item_type = "string"
-            # 必要に応じて他の型検出を追加 (例: float)
 
             self._settings_map[path_str] = SettingItem(
                 path=path_str,
                 value=value,
                 item_type=item_type,
+                raw_item_data=node.copy(), # 元のノードデータをコピーして保持
                 description=description,
                 options=options,
                 value_range=value_range_data
@@ -117,6 +92,7 @@ class UserSettings:
 
     def load_from_dict(self, config_data: Dict[str, Any]):
         """辞書 (解析された JSON) から設定をロードします。"""
+        self.rawjson = config_data.copy()
         self._settings_map.clear()
         self._parse_json_node(config_data, [])
 
@@ -140,7 +116,7 @@ class UserSettings:
             if item.options and new_value not in item.options:
                 print(f"警告: '{path}' の値 '{new_value}' は選択肢 {item.options} にありません。")
                 return False
-        elif item.item_type == "integer":
+        elif item.item_type == "int":
             if not isinstance(new_value, int):
                 print(f"警告: '{path}' の値 '{new_value}' は整数ではありません。")
                 return False
@@ -176,36 +152,32 @@ class UserSettings:
                 return False
 
         item.value = new_value
+        # raw_item_data内の 'value' も更新する
+        if 'value' in item.raw_item_data:
+            item.raw_item_data['value'] = new_value
         return True
 
     def get_setting_item(self, path: str) -> Optional[SettingItem]:
         """パスによって完全な SettingItem オブジェクトを取得します。"""
         return self._settings_map.get(path)
 
-    def _build_nested_dict_for_save(self, path_parts: List[str], setting_leaf_data: Dict[str, Any], current_dict_node: Dict[str, Any]):
-        """
-        保存のためにネストされた辞書構造を再構築するヘルパー。
-        """
-        key = path_parts[0]
-        if len(path_parts) == 1:
-            # これはリーフノードの親なので、ここに設定データを割り当てる
-            current_dict_node[key] = setting_leaf_data
-        else:
-            # さらに深くたどるか、パスを作成する
-            if key not in current_dict_node or not isinstance(current_dict_node[key], dict):
-                current_dict_node[key] = {}
-            self._build_nested_dict_for_save(path_parts[1:], setting_leaf_data, current_dict_node[key])
-
     def to_dict_for_save(self) -> Dict[str, Any]:
         """すべての設定を JSON 保存のためにネストされた辞書構造に変換し直します。"""
         output_root = {}
-        sorted_paths = sorted(self._settings_map.keys()) # 一貫した出力順序のためにソート
+        # sorted_paths = sorted(self._settings_map.keys()) # 一貫した出力順序のためにソート
 
-        for path in sorted_paths:
+        for path in self._settings_map.keys(): # 元の順序を維持するためにソートしない
             item = self._settings_map[path]
             path_parts = path.split('.')
-            setting_leaf_data = item.to_json_leaf_structure()
-            self._build_nested_dict_for_save(path_parts, setting_leaf_data, output_root)
+            
+            current_node = output_root
+            # 親ノードをたどる/作成する
+            for part in path_parts[:-1]: # 最後の要素 (リーフキー) を除く
+                current_node = current_node.setdefault(part, {})
+            
+            # リーフノードに item.raw_item_data を設定
+            leaf_key = path_parts[-1]
+            current_node[leaf_key] = item.raw_item_data
         return output_root
 
     def __repr__(self) -> str:
@@ -263,12 +235,13 @@ if __name__ == '__main__':
         print(my_settings) # 非常に冗長になる可能性があります
 
         print("\n--- 特定の設定項目へのアクセス ---")
-        narrator_model_path = "audioSettings.windowsNarrator.voiceModel"
+        narrator_model_path = "applicationSettings.CharacterSize"
         narrator_item = my_settings.get_setting_item(narrator_model_path)
         if narrator_item:
             print(f"設定: {narrator_item.description} (パス: {narrator_item.path})")
             print(f"  現在の値: {narrator_item.value}")
-            print(f"  型: {narrator_item.item_type}")
+            print(f"  タイプ: {narrator_item.item_type}")
+            print(f"  valueの型: {type(narrator_item.value)}")
             if narrator_item.options:
                 print(f"  選択肢: {narrator_item.options}")
             if narrator_item.value_range:
