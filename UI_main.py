@@ -9,8 +9,8 @@ import tkinter as tk
 from tkinter import ttk  # スタイル付きウィジェットのため
 import random  # 初期立ち絵をランダムに設定するため
 # プログラム同士のやり取り
-from main import myapp
-import Character_Image_Controller
+#from main import myapp
+import UI_characterImage
 from WindowsInfoCollecter import get_TotalMonitorSize
 import UI_settings
 import config_controller
@@ -35,7 +35,7 @@ class CharacterLabel(tk.Label):
         # print(self.master.winfo_geometry())
         # print(self.winfo_geometry)
         _size = self.setting.get_setting_value("applicationSettings.CharacterSize")
-        self.character_image_manager = Character_Image_Controller.charaimg_controller(win_h=_size, win_w=_size)
+        self.character_image_manager = UI_characterImage.charaimg_controller(win_h=_size, win_w=_size)
         self._init_image()
         self.place( x=self.master.winfo_screenwidth()/4*3 + abs(get_TotalMonitorSize()[2]),
                     y=self.master.winfo_screenheight()/2 + abs(get_TotalMonitorSize()[3])
@@ -70,7 +70,7 @@ class CharacterLabel(tk.Label):
 
 #左クリック時のメニューバーの管理
 class ContextMenuManager:
-    def __init__(self, app:myapp, ui):
+    def __init__(self, app, ui):
         self.app = app
         self.ui  = ui
         self.menu = tk.Menu(self.ui, tearoff=0)
@@ -85,11 +85,11 @@ class ContextMenuManager:
         self.menu.post(event.x_root, event.y_root)
 
     def show_textFrame(self):
-        self.ui.talk_window = UI_talk.TalkWindow(self.ui, self.app, self.app.setting)
+        self.ui.talk_window.deiconify()
         
     def show_settingUI(self):
-        setting_window = UI_settings.UI_settings(self.ui, settings=config_controller.read_configfile("config.json"))
-    
+        self.ui.setting_window.deiconify()
+
     #appの再起動
     def reboot_app(self):
         self.app.reboot_app()
@@ -106,6 +106,9 @@ class UI(tk.Tk):
         super().__init__()
         self.app = app
         self.setting = setting
+        self.talk_window = UI_talk.TalkWindow(self, self.app, self.setting); self.talk_window.withdraw()
+        self.setting_window = UI_settings.UI(self, self.setting); self.setting_window.withdraw()
+        
 
         # メインウィンドウの設定
         self.title("デスクトップキャラクター")
@@ -121,7 +124,6 @@ class UI(tk.Tk):
         self.geometry(f"{monitors_data[0]}x{monitors_data[1]}+{monitors_data[2]}+{monitors_data[3]}") # すべての範囲に収まるように取得
         
         # 会話ウィンドウのインスタンスを保持する変数 (最初はNone)
-        self.talk_window = None
 
         # CharacterLabelのインスタンス化と配置
         self.character_label = CharacterLabel(master=self, click_callback=self._handle_character_click, setting= self.setting )
@@ -148,7 +150,6 @@ class UI(tk.Tk):
         if self.talk_window and self.talk_window.winfo_exists() and self.talk_window.winfo_ismapped():
              self.talk_window.add_log("システム: キャラクターがクリックされました！")
 
-
     def update_character_image(self, image_name): # メソッド名を変更: update_character -> update_character_image
         """キャラクターの表示画像を更新します (CharacterLabelへ委譲)。"""
         self.character_label.update_image(image_name)
@@ -168,5 +169,5 @@ class UI(tk.Tk):
 
 if __name__ == "__main__":
     import main
-    app = main.myapp()
+    main.start_app()
     

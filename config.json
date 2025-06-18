@@ -17,7 +17,7 @@
     "engine": {
       "name": "音声合成エンジン",
       "type": "choice",
-      "value": "WindowsNarrator",
+      "value": "VOICEVOX",
       "options": [
         "None",
         "WindowsNarrator",
@@ -28,7 +28,7 @@
       "Model": {
         "name": "音声モデル",
         "type": "choice",
-        "value": "Microsoft Haruka - Japanese (Japan)",
+        "value": "Microsoft Ichiro - Japanese (Japan)",
         "options": []
       }
     },
