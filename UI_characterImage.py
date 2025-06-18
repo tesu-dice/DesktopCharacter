@@ -1,0 +1,100 @@
+"""
+キャラクターの画像の管理
+class charaimg_controller
+    キャラクターの画像を読み込んでリストとして管理する。
+    def __init__(self, win_h, win_w):
+    def load_imgs(self):
+    
+
+
+"""
+#一般ライブラリ
+import os
+from PIL import Image, ImageTk  # 画像表示のため
+import tkinter as tk
+import random
+
+#プログラムのインポート
+from config_controller import UserSettings
+
+#キャラクター画像を管理するクラス
+class charaimg_controller():
+    def __init__(self, win_h, win_w, dir_path = "立ち絵/"):
+        self.win_h = win_h
+        self.win_w = win_w
+        self.imgs ={} #画像名：画像ファイルの辞書
+        
+        self.load_imgs()
+        
+    #キャラクター画像の読み取り
+    def load_imgs(self, files_path = None):
+        dir_path = "立ち絵/"
+        files = os.listdir(dir_path)
+        #画像の名前と画像を適正サイズに変更して保存
+        for f in files :
+            image = Image.open(dir_path + f)  # 画像ファイル名を指定
+            # 画像サイズを調整 (必要に応じて)
+            image = image.resize((int(image.width *(self.win_h / image.height)), int(image.height *(self.win_h / image.height)) ))
+            image = ImageTk.PhotoImage(image)
+            
+            self.imgs[f] = image
+        #print("character-img_controller.py load_imgs() end")
+        #print(self.imgs)
+
+
+class CharacterLabel(tk.Label):
+    """キャラクター画像を表示するためのフレーム（ラベル/ボタン）です。"""
+    def __init__(self, master, click_callback, setting:UserSettings):
+        super().__init__(master)
+        self.config(background=self.master.cget("background"))
+        self.config(activebackground=self.master.cget("background"))
+        self.click_callback = click_callback
+        self.setting = setting
+        self.ImageController = charaimg_controller()
+
+        #tk.Tkの縦横のサイズを取得(適切に取得できず、1,が返される)
+        # print("UIのウィジェットのサイズ")
+        # print(self.master.winfo_screenwidth())
+        # print(self.master.winfo_screenheight())
+        # print(self.master.geometry()) # まだ配置してない状態で参照するので1+1
+        # print(self.master.winfo_geometry())
+        # print(self.winfo_geometry)
+        _size = self.setting.get_setting_value("applicationSettings.CharacterSize")
+        self.character_image_manager = UI_characterImage.charaimg_controller(win_h=_size, win_w=_size)
+        self._init_image()
+        self.place( x=self.master.winfo_screenwidth()/4*3 + abs(get_TotalMonitorSize()[2]),
+                    y=self.master.winfo_screenheight()/2 + abs(get_TotalMonitorSize()[3])
+                    )
+
+    #ラベルの画像を初期化
+    def _init_image(self):
+        try:
+            if not self.character_image_manager.imgs:
+                print("エラー: CharacterImageManagerによって画像が読み込まれていません。")
+                self = tk.Label(self, text="画像なし", font=("Arial", self.setting.get_setting_value("applicationSettings.FontSize")))
+            else:
+                initial_img_name = random.choice(list(self.character_image_manager.imgs.keys()))
+                img_tk = self.character_image_manager.imgs[initial_img_name]
+                self["image"] = img_tk
+                
+
+            
+
+        except Exception as e: # FileNotFoundError だけでなく一般的なエラーも捕捉
+            print(f"キャラクター画像ウィジェットの作成中にエラーが発生しました: {e}")
+            self = tk.Label(self, text="画像なし", font=("Arial", self.setting.get_setting_value("applicationSettings.FontSize")))
+
+    #キャラクター画像の更新
+    def update_image(self, img_name):
+        """表示されているキャラクター画像を更新します。"""
+        if img_name in self.character_image_manager.imgs:
+            new_img_tk = self.character_image_manager.imgs[img_name]
+            self.config(image=new_img_tk)
+        else:
+            print(f"エラー: 画像名 '{img_name}' は CharacterImageManager に見つかりません。")
+
+    
+
+if __name__ == "__main__":
+    a = charaimg_controller(500, 500)
+

@@ -36,7 +36,7 @@ def get_SAPIVoice_names():
 #テキストをモデル名、速度に合わせて読み上げ。
 #読み上げる文字列、会話に使用するモデル名、読み上げ速度(-10.0~10.0)
 def text_to_speech(text, model_description, rate= 2.0):
-    print(f"windowsNarrator.py text_to_speech(), text={text}, voice_name={voice_name}, rate-{rate}")
+    #print(f"windowsNarrator.py text_to_speech(), text={text}, {model_description}, rate={rate}")
     sapi = win32com.client.Dispatch("SAPI.SpVoice")
     try:
         #読み上げモデル取得

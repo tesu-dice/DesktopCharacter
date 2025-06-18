@@ -3,7 +3,7 @@ Windowsからデータを取得して受け渡す用のクラス
 
 """
 import datetime
-import win32gui
+import win32gui #pip install pywin32
 from screeninfo import get_monitors
 
 
@@ -11,9 +11,11 @@ class win_info_collector():
     def __init__(self, debug = False):
         self.time_init = datetime.datetime.now()
         self.time_last = datetime.datetime.now()
-        self.get_datetime()
-        self.get_nowday()
-        get_TotalMonitorSize(debug=debug)
+        if debug == True:
+            print(self.get_datetime())
+            print(self.get_nowday())
+            print(get_TotalMonitorSize(debug=debug))
+            print(self.get_activate_window())
 
     #作業中のウィンドウのIDゲットしてそのタイトルを文字列で返す。
     def get_activate_window(self):

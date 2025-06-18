@@ -12,14 +12,7 @@ import config_controller
 
 class myapp():
     def __init__(self):
-        #初期化
-            #ユーザで他の読み込み
-        self.setting = config_controller.read_configfile("config.json")
-        if self.setting is None:
-            print("コンフィグファイルの読み込みに失敗しました。")
-        self.ai = geminiAPI.geminiAI(self.setting)
-        self.WinInfo = WindowsInfoCollecter.win_info_collector()
-        self.ui = UI_main.UI(self, self.setting)
+       
         #voicevoxを起動
         try:
             result = subprocess.Popen("windows-nvidia/run.exe")
@@ -27,9 +20,24 @@ class myapp():
             print("VoiceVoxEngineの実行に失敗しました。")
             print(e)
 
+         #初期化
+            #ユーザで他の読み込み
+        self.setting = config_controller.read_configfile("config.json")
+        if self.setting is None:
+            print("コンフィグファイルの読み込みに失敗しました。")
+        self.ai = geminiAPI.geminiAI(self.setting)
+        self.WinInfo = WindowsInfoCollecter.win_info_collector()
+        self.ui = UI_main.UI(self, self.setting)
+        
+
+        
+        self.ui.after(500, self.update)
+        start_app(self)
+
     def reboot_app(self):
         self.ui.destroy()
         self.__init__()
+        start_app(self)
 
 
 
@@ -44,7 +52,7 @@ class myapp():
 
         self.ui.update_character_image(img)
         if self.ui.talk_window and self.ui.talk_window.winfo_exists() and self.ui.talk_window.winfo_ismapped():
-             self.ui.talk_window.add_log("AI: " + response) # AI応答を TalkWindow に追加
+             self.ui.talk_window.add_log(">>>\n" + response) # AI応答を TalkWindow に追加
 
     #状態監視の実行
     def update(self):
@@ -56,10 +64,10 @@ class myapp():
 
 
 
-def start_app():
+def start_app(app = None):
     print("main.py start")
-    app = myapp()
-    app.ui.after(500, app.update)
+    if app == None:
+        app = myapp()
     app.ui.mainloop()
 
 
