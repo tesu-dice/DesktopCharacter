@@ -36,7 +36,7 @@ class TalkWindow(tk.Toplevel):
         input_frame = tk.Frame(main_frame)
         input_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(5, 0))
 
-        self.input_text = tk.Entry(input_frame, font=("Arial", self.setting.get_setting_value("applicationSettings.FontSize")))
+        self.input_text = tk.Entry(input_frame, font=("Arial", self.setting.get_setting_value("ApplicationSettings.FontSize")))
         self.input_text.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
         self.input_text.bind("<Return>", self._on_send_click) # Enterキーで送信
 
@@ -50,7 +50,7 @@ class TalkWindow(tk.Toplevel):
         log_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         self.message_text = tk.Text(log_frame, wrap="word", state="disabled",
-                                    background="#F0F0F0", font=("Arial", self.setting.get_setting_value("applicationSettings.FontSize")))
+                                    background="#F0F0F0", font=("Arial", self.setting.get_setting_value("ApplicationSettings.FontSize")))
         self.message_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         self.bar_vertical_scroll = tk.Scrollbar(
@@ -79,32 +79,5 @@ class TalkWindow(tk.Toplevel):
             self.message_text.configure(state="disabled")
 
 if __name__ == "__main__":
-    # テスト用のダミー master_controller と settings
-    class DummyMasterController:
-        def SendMessage_toAI(self, text):
-            print(f"DummyMasterController received message: {text}")
-            # ダミーの応答をログに追加
-            self.talk_window_ref.add_log("AI: ダミー応答です。")
-
-    class DummySettings:
-         def get_setting_value(self, path, default=None):
-            # テスト用のダミー設定値を返す
-            if path == "applicationSettings.FontSize": return 12
-            if path == "otherSettings.textWindowSize.width": return 500
-            if path == "otherSettings.textWindowSize.height": return 400
-            return default
-
-    root = tk.Tk()
-    root.withdraw() # メインウィンドウは非表示
-
-    dummy_mc = DummyMasterController()
-    dummy_settings = DummySettings()
-
-    talk_window = TalkWindow(root, dummy_mc, dummy_settings)
-    dummy_mc.talk_window_ref = talk_window # ダミーコントローラーに参照を持たせる
-
-    talk_window.add_log("システム: 会話ウィンドウを開きました。")
-
-    root.mainloop()
-
-
+    import main
+    main.start_app()

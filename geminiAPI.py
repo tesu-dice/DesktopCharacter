@@ -27,9 +27,12 @@ class geminiAI():
         def __init__(self, usersetting:UserSettings):
             self.usersetting = usersetting
             #APIkeyの設定
-            f = open("myAPI.txt", "r")
-            yourAPIkey = f.readline()
-            f.close()
+
+            # f = open("myAPI.txt", "r")
+            # yourAPIkey = f.readline()
+            # f.close()
+            yourAPIkey = self.usersetting.get_setting_value("ApplicationSettings.geminiAPIkey")
+            print("APIkey = ",yourAPIkey)
             genai.configure(api_key=yourAPIkey)
 
             #会話設定
@@ -120,7 +123,7 @@ class geminiAI():
             if (response.text.find("：")):
                 parts = response.text.split("：", 1)  # "："で分割、最大分割回数1
                 #threadを使って音声処理を並列化
-                thread = threading.Thread(target=self.speech_text, args=(parts[1],))
+                thread = threading.Thread(target=self.Reflecting_textResponsestoUI, args=(parts[1],))
                 thread.daemon = True
                 thread.start()
                 print("thread main keeped")
@@ -152,7 +155,6 @@ class geminiAI():
         
         
         def Reflecting_textResponsestoUI(self, text, debug=False):
-
             #テキストを読み上げモード別に読み上げる
             mode = self.usersetting.get_setting_value("VoiceSettings.engine")
             if(debug == True):
@@ -163,8 +165,8 @@ class geminiAI():
                 model_description = self.usersetting.get_setting_value("VoiceSettings.windowsNarrator.Model")
                 talk_WindowsNarratorManager.text_to_speech(text, model_description)
             elif(mode == "VOICEVOX"):
-                chosenvalue = self.usersetting.get_setting_value("VoiceSettings.VOICEVOX.Model")
-                id = str(chosenvalue).split("=")[-1]
+                chosen_value = self.usersetting.get_setting_value("VoiceSettings.VOICEVOX.Model")
+                id = str(chosen_value).split("=")[-1]
                 talk_VoiceVoxEngine.text_to_speech(text, int(id))
             else:
                 print("error : geminiAPI.py speech_text() unknown mode.")

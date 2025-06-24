@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional, Union
 class SettingItem:
     """個々の設定項目を表します。"""
     def __init__(self,
+                 name: str,
                  path: str,
                  value: Any,
                  item_type: str,
@@ -22,6 +23,7 @@ class SettingItem:
         SettingItem を初期化します。
 
         Args:
+            name: 項目の名前
             path: 設定へのドット区切りパス (例: "audioSettings.windowsNarrator.voiceModel")。
             value: 設定の現在の値。
             item_type: 設定の型 ("choice", "integer", "string", "boolean", "object")。
@@ -32,6 +34,7 @@ class SettingItem:
                          "integer" の場合: {"min": int, "max": int}。
                          "object" の場合: {"min": dict, "max": dict} (サブプロパティの制約)。
         """
+        self.name: str = name
         self.path: str = path
         self.description: str = description
         self.value: Any = value
@@ -51,50 +54,70 @@ class UserSettings:
 
     def __init__(self):
         self._settings_map: Dict[str, SettingItem] = {}
+        self._raw_config_data: Dict[str, Any] = {} # ロードしたJSON全体の構造を保持
 
-    def _parse_json_node(self, node: Dict[str, Any], current_path_parts: List[str]):
+    def _populate_settings_map(self, node: Dict[str, Any], current_path_parts: List[str]):
         """
         JSON データからノードを再帰的に解析して _settings_map を設定します。
+        このメソッドは _raw_config_data を変更しません。
         """
-        # 現在のノード自体が設定定義であるかを確認
-        # ノードが "value" キーを直接含む場合、設定定義と見なされる
+        # Case 1: このノードがセクションである場合 ('type: "section"' と 'children' を持つ)
+        if node.get("type") == "section" and "children" in node and isinstance(node["children"], dict):
+            # このセクションの子を再帰的に処理する。
+            # パスには "children" を含めない。
+            for key, sub_node in node["children"].items():
+                if isinstance(sub_node, dict):
+                    self._populate_settings_map(sub_node, current_path_parts + [key])
+            return # セクションノード自体は SettingItem ではない
+
+        # Case 2: このノードが実際の設定項目である場合 ('value' を持つ)
         if "value" in node:
             path_str = ".".join(current_path_parts)
             if not path_str: # 有効な設定構造では発生しないはず
                 return
 
+            name = node.get("name", current_path_parts[-1]) # 'name' がない場合はキーを使用
             value = node["value"]
-            description = node.get("name", current_path_parts[-1])
+            item_type = node.get("type")
             options = node.get("options")
-            json_min = node.get("min")
-            json_max = node.get("max")
-
-            item_type = node.get("type") # デフォルト
             value_range_data = {}
+            if "min" in node:
+                value_range_data["min"] = node["min"]
+            if "max" in node:
+                value_range_data["max"] = node["max"]
 
+            # description は name を使用
+            description = name
+
+            # item_type のデフォルト値を設定
+            if item_type is None:
+                item_type = type(value).__name__ # Pythonの型名を使用
 
             self._settings_map[path_str] = SettingItem(
+                name=name,
                 path=path_str,
                 value=value,
-                item_type=item_type,
-                raw_item_data=node.copy(), # 元のノードデータをコピーして保持
+                item_type=item_type, # ここで item_type を使用
+                raw_item_data=node, # _raw_config_data 内の実際のノードへの参照を保持
                 description=description,
                 options=options,
                 value_range=value_range_data
             )
-            # このノードは設定項目なので、"name" や "value" などのキーにさらに再帰しない
             return
 
-        # 直接の設定項目でない場合、その子に再帰する
+        # Case 3: このノードが中間的な辞書である場合 (セクションでも設定項目でもない)
+        # その直接の子を再帰的に処理する
+        # 例: ApplicationSettings の直下にあるが、セクションでも設定項目でもない将来の構造
+        # 現在の config.json では、このパスは通常、セクションまたは設定項目に直接つながる
         for key, sub_node in node.items():
             if isinstance(sub_node, dict):
-                self._parse_json_node(sub_node, current_path_parts + [key])
+                self._populate_settings_map(sub_node, current_path_parts + [key])
 
     def load_from_dict(self, config_data: Dict[str, Any]):
         """辞書 (解析された JSON) から設定をロードします。"""
-        self.rawjson = config_data.copy()
+        self._raw_config_data = config_data.copy() # ロードしたJSONデータをコピーして保持
         self._settings_map.clear()
-        self._parse_json_node(config_data, [])
+        self._populate_settings_map(self._raw_config_data, []) # 新しいヘルパーメソッドを呼び出す
 
     def get_setting_value(self, path: str, default: Any = None) -> Any:
         """パスによって設定の値を取得します。"""
@@ -106,7 +129,7 @@ class UserSettings:
         パスによって設定の値を設定し、基本的な検証を行います。
         成功した場合は True、それ以外の場合は False を返します。
         """
-        item = self._settings_map.get(path)
+        item = self._settings_map.get(path) # SettingItem オブジェクトを取得
         if not item:
             print(f"警告: パス '{path}' の設定が見つかりません。")
             return False
@@ -142,20 +165,25 @@ class UserSettings:
                         if k in max_constraints and v_new > max_constraints[k]:
                             print(f"警告: '{path}' のサブプロパティ '{k}' の値 {v_new} は最大値 {max_constraints[k]} を超えています。")
                             return False
-        elif item.item_type == "boolean":
+        elif item.item_type == "bool":
             if not isinstance(new_value, bool):
                 print(f"警告: '{path}' の値 '{new_value}' はブール値ではありません。")
                 return False
-        elif item.item_type == "string":
+        elif item.item_type == "str":
             if not isinstance(new_value, str):
                 print(f"警告: '{path}' の値 '{new_value}' は文字列ではありません。")
                 return False
+        # その他の型に対する検証はここに追加
 
+        # SettingItem オブジェクトの値を更新
         item.value = new_value
-        # raw_item_data内の 'value' も更新する
+        
+        # _raw_config_data 内の対応する 'value' も更新する
+        # item.raw_item_data は _raw_config_data 内の実際の辞書への参照なので、直接更新できる
         if 'value' in item.raw_item_data:
             item.raw_item_data['value'] = new_value
-        return True
+
+        return True # 成功した場合は True を返す
 
     def get_setting_item(self, path: str) -> Optional[SettingItem]:
         """パスによって完全な SettingItem オブジェクトを取得します。"""
@@ -168,17 +196,10 @@ class UserSettings:
 
         for path in self._settings_map.keys(): # 元の順序を維持するためにソートしない
             item = self._settings_map[path]
-            path_parts = path.split('.')
-            
-            current_node = output_root
-            # 親ノードをたどる/作成する
-            for part in path_parts[:-1]: # 最後の要素 (リーフキー) を除く
-                current_node = current_node.setdefault(part, {})
-            
-            # リーフノードに item.raw_item_data を設定
-            leaf_key = path_parts[-1]
-            current_node[leaf_key] = item.raw_item_data
-        return output_root
+            # item.raw_item_data は _raw_config_data 内の実際のノードへの参照なので、
+            # set_setting_value で既に更新されている。
+            # そのため、_raw_config_data をそのまま返せばよい。
+        return self._raw_config_data # _raw_config_data をそのまま返す
 
     def __repr__(self) -> str:
         items_repr = "\n".join(f"  {path}: {item!r}" for path, item in self._settings_map.items())
@@ -220,62 +241,5 @@ def write_configfile(usersettings: UserSettings, filepath: str = "config.json"):
 
 
 if __name__ == '__main__':
-    # UserSettings の使用例です
-    # config.json が同じディレクトリにあるか、有効なパスが指定されていることを前提とします。
-    CONFIG_FILE_PATH = "config.json" # またはコンテキストから完全なパスを指定
-
-    # テスト用にダミーの config.json が存在しない場合は作成します
-    if not os.path.exists(CONFIG_FILE_PATH):
-        print(f"警告: '{CONFIG_FILE_PATH}' が見つかりません。この例ではダミーは作成されません。")
-        # 必要に応じて、スタンドアロンテスト用にここにサンプル config.json を作成できます。
-    # 対象ファイルが見つかった場合
-    else:
-        print(f"--- '{CONFIG_FILE_PATH}' から設定を読み込み中 ---")
-        my_settings = read_configfile(CONFIG_FILE_PATH)
-        print(my_settings) # 非常に冗長になる可能性があります
-
-        print("\n--- 特定の設定項目へのアクセス ---")
-        narrator_model_path = "applicationSettings.CharacterSize"
-        narrator_item = my_settings.get_setting_item(narrator_model_path)
-        if narrator_item:
-            print(f"設定: {narrator_item.description} (パス: {narrator_item.path})")
-            print(f"  現在の値: {narrator_item.value}")
-            print(f"  タイプ: {narrator_item.item_type}")
-            print(f"  valueの型: {type(narrator_item.value)}")
-            if narrator_item.options:
-                print(f"  選択肢: {narrator_item.options}")
-            if narrator_item.value_range:
-                print(f"  範囲: {narrator_item.value_range}")
-        else:
-            print(f"警告: パス '{narrator_model_path}' の設定が見つかりません。")
-
-
-        print("\n--- 特定の設定値の取得 ---")
-        api_key = my_settings.get_setting_value("otherSettings.geminiAPIKey", "DEFAULT_KEY_IF_NOT_FOUND")
-        print(f"Gemini API キー: {api_key}")
-
-        print("\n--- 設定値の変更 ---")
-        vv_speed_path = "audioSettings.voiceVox.readingSpeed"
-        original_vv_speed = my_settings.get_setting_value(vv_speed_path)
-        print(f"元の VoiceVox 速度: {original_vv_speed}")
-        if my_settings.set_setting_value(vv_speed_path, 7): # 7 に設定してみる
-            print(f"新しい VoiceVox 速度: {my_settings.get_setting_value(vv_speed_path)}")
-
-        # 無効な値 (範囲外または誤った型) を設定してみる
-        print("VoiceVox 速度を 15 (範囲外) に設定しようとしています:")
-        my_settings.set_setting_value(vv_speed_path, 15)
-        print(f"無効な試行後の VoiceVox 速度: {my_settings.get_setting_value(vv_speed_path)}")
-
-        # textWindowSize (object 型) の変更
-        text_win_path = "otherSettings.textWindowSize"
-        original_text_win_size = my_settings.get_setting_value(text_win_path)
-        print(f"元のテキストウィンドウサイズ: {original_text_win_size}")
-        new_size = {"width": 900, "height": 700}
-        if my_settings.set_setting_value(text_win_path, new_size):
-            print(f"新しいテキストウィンドウサイズ: {my_settings.get_setting_value(text_win_path)}")
-
-        # print("\n--- 新しいファイルへの設定の保存 (例) ---")
-        # テスト中に元の config.json を上書きしないようにするため
-        # TEST_OUTPUT_PATH = "config_modified.json"
-        # write_configfile(my_settings, TEST_OUTPUT_PATH)
-        # print(f"設定が '{TEST_OUTPUT_PATH}' に保存された可能性があります。ファイルを確認してください。")
+    import main
+    main.start_app()

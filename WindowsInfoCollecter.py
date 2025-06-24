@@ -6,11 +6,16 @@ import datetime
 import win32gui #pip install pywin32
 from screeninfo import get_monitors
 
+#プログラム間でのインポート
+from config_controller import UserSettings
+
+
 
 class win_info_collector():
-    def __init__(self, debug = False):
+    def __init__(self, UserSetting :UserSettings, debug = False):
         self.time_init = datetime.datetime.now()
         self.time_last = datetime.datetime.now()
+        self.usersetting = UserSetting
         if debug == True:
             print(self.get_datetime())
             print(self.get_nowday())
@@ -35,10 +40,13 @@ class win_info_collector():
         #print("win_info_collector get_nowday() day = " + str(day) ) 
         return day
     
-    def check_freetime(self):
+    def check_freetime(self, debug = False):
         freetime =  datetime.datetime.now() - self.time_last
         freetime = freetime.seconds
-        if freetime >= 300:
+        if debug == True:
+            print("経過時間(秒) = ", freetime, "会話周期(秒)= ", self.usersetting.get_setting_value("ApplicationSettings.ActiveSpeak.Time"))
+        
+        if freetime >= self.usersetting.get_setting_value("ApplicationSettings.ActiveSpeak.Time"):
             self.time_last = datetime.datetime.now()
             return True
         else:
