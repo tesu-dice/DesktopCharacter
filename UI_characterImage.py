@@ -59,7 +59,7 @@ class CharacterLabel(tk.Label):
         # print(self.master.geometry()) # まだ配置してない状態で参照するので1+1
         # print(self.master.winfo_geometry())
         # print(self.winfo_geometry)
-        _size = self.setting.get_setting_value("applicationSettings.CharacterSize")
+        _size = self.setting.get_setting_value("ApplicationSettings.CharacterSize")
         self.character_image_manager = UI_characterImage.charaimg_controller(win_h=_size, win_w=_size)
         self._init_image()
         self.place( x=self.master.winfo_screenwidth()/4*3 + abs(get_TotalMonitorSize()[2]),
@@ -71,7 +71,7 @@ class CharacterLabel(tk.Label):
         try:
             if not self.character_image_manager.imgs:
                 print("エラー: CharacterImageManagerによって画像が読み込まれていません。")
-                self = tk.Label(self, text="画像なし", font=("Arial", self.setting.get_setting_value("applicationSettings.FontSize")))
+                self = tk.Label(self, text="画像なし", font=("Arial", self.setting.get_setting_value("ApplicationSettings.FontSize")))
             else:
                 initial_img_name = random.choice(list(self.character_image_manager.imgs.keys()))
                 img_tk = self.character_image_manager.imgs[initial_img_name]
@@ -82,7 +82,7 @@ class CharacterLabel(tk.Label):
 
         except Exception as e: # FileNotFoundError だけでなく一般的なエラーも捕捉
             print(f"キャラクター画像ウィジェットの作成中にエラーが発生しました: {e}")
-            self = tk.Label(self, text="画像なし", font=("Arial", self.setting.get_setting_value("applicationSettings.FontSize")))
+            self = tk.Label(self, text="画像なし", font=("Arial", self.setting.get_setting_value("ApplicationSettings.FontSize")))
 
     #キャラクター画像の更新
     def update_image(self, img_name):

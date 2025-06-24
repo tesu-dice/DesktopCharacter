@@ -9,31 +9,29 @@ import UI_main
 import geminiAPI
 import WindowsInfoCollecter
 import config_controller
+from talk_VoiceVoxEngine import start_server
+
 
 class myapp():
     def __init__(self):
-       
-        #voicevoxを起動
-        try:
-            result = subprocess.Popen("windows-nvidia/run.exe")
-        except Exception as e:
-            print("VoiceVoxEngineの実行に失敗しました。")
-            print(e)
-
-         #初期化
-            #ユーザで他の読み込み
+        #ユーザで他の読み込み
         self.setting = config_controller.read_configfile("config.json")
         if self.setting is None:
             print("コンフィグファイルの読み込みに失敗しました。")
+        #VOICEVOXEngineの起動
+        if  self.setting.get_setting_value("VoiceSettings.VOICEVOX.autorun") == True and \
+            self.setting.get_setting_value("VoiceSettings.VOICEVOX.path") != "":
+            start_server(self.setting.get_setting_value("VoiceSettings.VOICEVOX.path"))
+        #各要素の起動
         self.ai = geminiAPI.geminiAI(self.setting)
-        self.WinInfo = WindowsInfoCollecter.win_info_collector()
+        self.WinInfo = WindowsInfoCollecter.win_info_collector(self.setting)
         self.ui = UI_main.UI(self, self.setting)
         
 
         
         self.ui.after(500, self.update)
         start_app(self)
-
+    #アプリケーションの再起動
     def reboot_app(self):
         self.ui.destroy()
         self.__init__()
@@ -43,12 +41,14 @@ class myapp():
 
     #入力テキストをAIに伝え、UIにログを追加
     def SendMessage_toAI(self, text):
+        t, w, m = "", "", ""
         t = "現在時刻：" + self.WinInfo.get_datetime() + "\n"
-        w = "作業中窓：" + self.WinInfo.get_activate_window() + "\n"
-        # ユーザーメッセージのログ追加は TalkWindow 側で行う
-        # self.ui.add_log(t + w + text) # この行は不要になりました
+        if self.setting.get_setting_value("ApplicationSettings.Permisson.ActiveWindow") == True:
+            w = "作業中窓：" + self.WinInfo.get_activate_window() + "\n"
+        if self.setting.get_setting_value("ApplicationSettings.Permisson.PlayingMedia") == True:
+            m = "再生中のメディア：" #関数まだ作ってない。
 
-        img , response = self.ai.response(t + w + text)
+        img , response = self.ai.response(t + w + m + text)
 
         self.ui.update_character_image(img)
         if self.ui.talk_window and self.ui.talk_window.winfo_exists() and self.ui.talk_window.winfo_ismapped():
@@ -56,9 +56,10 @@ class myapp():
 
     #状態監視の実行
     def update(self):
-        print("main.py update() called")
-        if self.WinInfo.check_freetime():
-            self.SendMessage_toAI("System:ユーザは上記のように作業中です。話しかけてください。")
+
+        if self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.on/off") == True:    
+            if self.WinInfo.check_freetime():
+                self.SendMessage_toAI("System:ユーザは上記のように作業中です。話しかけてください。")
         self.ui.after(10000, self.update)
 
 
