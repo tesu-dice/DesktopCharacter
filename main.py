@@ -41,16 +41,18 @@ class myapp():
 
 
     #入力テキストをAIに伝え、UIにログを追加
-    def SendMessage_toAI(self, text):
+    def SendMessage_toAI(self, text, debug = False):
         t, w, m = "", "", ""
         t = "現在時刻：" + self.WinInfo.get_datetime() + "\n"
         if self.setting.get_setting_value("ApplicationSettings.Permisson.ActiveWindow") == True:
             w = "作業中窓：" + self.WinInfo.get_activate_window() + "\n"
         if self.setting.get_setting_value("ApplicationSettings.Permisson.PlayingMedia") == True:
-            m = "再生中のメディア：" #関数まだ作ってない。
-
+            m = "再生中のメディア：" + self.WinInfo.get_plaing_media(debug = debug) + "\n"
         response_text = self.ai.response(t + w + m + text)
-        self.ui.talk_window.add_log(">>>\n" + response_text) # AI応答を TalkWindow に追加
+        if debug == True:
+            self.ui.talk_window.add_log(f"{t}{w}{m}>>>\n" + response_text) # AI応答を TalkWindow に追加
+        else:
+            self.ui.talk_window.add_log(f">>>\n" + response_text)
 
     #状態監視の実行
     def update(self, debug = False):
