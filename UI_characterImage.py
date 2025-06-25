@@ -16,6 +16,8 @@ import random
 
 #プログラムのインポート
 from config_controller import UserSettings
+from WindowsInfoCollecter import get_TotalMonitorSize
+
 
 #キャラクター画像を管理するクラス
 class charaimg_controller():
@@ -50,7 +52,8 @@ class CharacterLabel(tk.Label):
         self.config(activebackground=self.master.cget("background"))
         self.click_callback = click_callback
         self.setting = setting
-        self.ImageController = charaimg_controller()
+        _size = self.setting.get_setting_value("ApplicationSettings.CharacterSize")
+        self.ImageController = charaimg_controller(win_h=_size, win_w=_size)
 
         #tk.Tkの縦横のサイズを取得(適切に取得できず、1,が返される)
         # print("UIのウィジェットのサイズ")
@@ -60,7 +63,7 @@ class CharacterLabel(tk.Label):
         # print(self.master.winfo_geometry())
         # print(self.winfo_geometry)
         _size = self.setting.get_setting_value("ApplicationSettings.CharacterSize")
-        self.character_image_manager = UI_characterImage.charaimg_controller(win_h=_size, win_w=_size)
+        self.character_image_manager = charaimg_controller(win_h=_size, win_w=_size)
         self._init_image()
         self.place( x=self.master.winfo_screenwidth()/4*3 + abs(get_TotalMonitorSize()[2]),
                     y=self.master.winfo_screenheight()/2 + abs(get_TotalMonitorSize()[3])
@@ -96,5 +99,6 @@ class CharacterLabel(tk.Label):
     
 
 if __name__ == "__main__":
-    a = charaimg_controller(500, 500)
+    import main
+    main.start_app()
 
