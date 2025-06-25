@@ -23,9 +23,10 @@ class myapp():
             self.setting.get_setting_value("VoiceSettings.VOICEVOX.path") != "":
             start_server(self.setting.get_setting_value("VoiceSettings.VOICEVOX.path"))
         #各要素の起動
-        self.ai = geminiAPI.geminiAI(self.setting)
+        
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.setting)
         self.ui = UI_main.UI(self, self.setting)
+        self.ai = geminiAPI.geminiAI(self.setting, self.ui)
         
 
         
@@ -48,15 +49,13 @@ class myapp():
         if self.setting.get_setting_value("ApplicationSettings.Permisson.PlayingMedia") == True:
             m = "再生中のメディア：" #関数まだ作ってない。
 
-        img , response = self.ai.response(t + w + m + text)
-
-        self.ui.update_character_image(img)
-        if self.ui.talk_window and self.ui.talk_window.winfo_exists() and self.ui.talk_window.winfo_ismapped():
-             self.ui.talk_window.add_log(">>>\n" + response) # AI応答を TalkWindow に追加
+        response_text = self.ai.response(t + w + m + text)
+        self.ui.talk_window.add_log(">>>\n" + response_text) # AI応答を TalkWindow に追加
 
     #状態監視の実行
-    def update(self):
-
+    def update(self, debug = False):
+        if debug == True:
+            print(f"main.py update() called. activespeak={self.setting.get_setting_value('ApplicationSettings.ActiveSpeak.on/off')}")
         if self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.on/off") == True:    
             if self.WinInfo.check_freetime():
                 self.SendMessage_toAI("System:ユーザは上記のように作業中です。話しかけてください。")

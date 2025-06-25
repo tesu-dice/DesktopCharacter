@@ -18,14 +18,17 @@ import threading
 import talk_VoiceVoxEngine 
 import talk_WindowsNarratorManager 
 from config_controller import UserSettings
+from UI_main import UI
+
 
 
 
 
 class geminiAI():
         #初期化
-        def __init__(self, usersetting:UserSettings):
+        def __init__(self, usersetting:UserSettings, ui:UI):
             self.usersetting = usersetting
+            self.ui = ui
             #APIkeyの設定
 
             # f = open("myAPI.txt", "r")
@@ -120,16 +123,13 @@ class geminiAI():
             print(response.usage_metadata)
             
             #
-            if (response.text.find("：")):
-                parts = response.text.split("：", 1)  # "："で分割、最大分割回数1
-                #threadを使って音声処理を並列化
-                thread = threading.Thread(target=self.Reflecting_textResponsestoUI, args=(parts[1],))
-                thread.daemon = True
-                thread.start()
-                print("thread main keeped")
-                return parts[0], parts[1]
-            else:
-                 return response.text
+            #threadを使って音声処理を並列化
+            thread = threading.Thread(target=self.Reflecting_textResponsestoUI, args=(response.text,))
+            thread.daemon = True
+            thread.start()
+            print("thread main keeped")
+            return response.text
+
         
         # 会話ログ表示用の関数
         def view_conversation_log(self):
@@ -154,22 +154,30 @@ class geminiAI():
             print("-----------------------------\n")
         
         
-        def Reflecting_textResponsestoUI(self, text, debug=False):
+        def Reflecting_textResponsestoUI(self, texts, debug=False):
             #テキストを読み上げモード別に読み上げる
             mode = self.usersetting.get_setting_value("VoiceSettings.engine")
-            if(debug == True):
-                print("geminiAPI.py speech_text() was called.",mode, text)
-            if(mode == "None"):
-                return
-            elif(mode == "WindowsNarrator"):
-                model_description = self.usersetting.get_setting_value("VoiceSettings.windowsNarrator.Model")
-                talk_WindowsNarratorManager.text_to_speech(text, model_description)
-            elif(mode == "VOICEVOX"):
-                chosen_value = self.usersetting.get_setting_value("VoiceSettings.VOICEVOX.Model")
-                id = str(chosen_value).split("=")[-1]
-                talk_VoiceVoxEngine.text_to_speech(text, int(id))
-            else:
-                print("error : geminiAPI.py speech_text() unknown mode.")
+            for text in texts.split("\n"):
+                if text == "":
+                    break
+                if text.find("："):
+                    self.ui.update_character_image(text.split("：")[0])
+                    text = text.split("：")[-1]
+
+                
+                if(debug == True):
+                    print("geminiAPI.py speech_text() was called.",mode, text)
+                if(mode == "None"):
+                    return
+                elif(mode == "WindowsNarrator"):
+                    model_description = self.usersetting.get_setting_value("VoiceSettings.windowsNarrator.Model")
+                    talk_WindowsNarratorManager.text_to_speech(text, model_description)
+                elif(mode == "VOICEVOX"):
+                    chosen_value = self.usersetting.get_setting_value("VoiceSettings.VOICEVOX.Model")
+                    id = str(chosen_value).split("=")[-1]
+                    talk_VoiceVoxEngine.text_to_speech(text, int(id))
+                else:
+                    print("error : geminiAPI.py speech_text() unknown mode.")
         
 
 

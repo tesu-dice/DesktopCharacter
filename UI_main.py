@@ -17,56 +17,6 @@ import config_controller
 from config_controller import UserSettings
 import UI_talk # UI_talk モジュールをインポート
 
-class CharacterLabel(tk.Label):
-    """キャラクター画像を表示するためのフレーム（ラベル/ボタン）です。"""
-    def __init__(self, master, click_callback, setting:UserSettings):
-        super().__init__(master)
-        self.config(background=self.master.cget("background"))
-        self.config(activebackground=self.master.cget("background"))
-        self.click_callback = click_callback
-        self.setting = setting
-
-
-        #tk.Tkの縦横のサイズを取得(適切に取得できず、1,が返される)
-        # print("UIのウィジェットのサイズ")
-        # print(self.master.winfo_screenwidth())
-        # print(self.master.winfo_screenheight())
-        # print(self.master.geometry()) # まだ配置してない状態で参照するので1+1
-        # print(self.master.winfo_geometry())
-        # print(self.winfo_geometry)
-        _size = self.setting.get_setting_value("ApplicationSettings.CharacterSize")
-        self.character_image_manager = UI_characterImage.charaimg_controller(win_h=_size, win_w=_size)
-        self._init_image()
-        self.place( x=self.master.winfo_screenwidth()/4*3 + abs(get_TotalMonitorSize()[2]),
-                    y=self.master.winfo_screenheight()/2 + abs(get_TotalMonitorSize()[3])
-                    )
-
-    #ラベルの画像を初期化
-    def _init_image(self):
-        try:
-            if not self.character_image_manager.imgs:
-                print("エラー: CharacterImageManagerによって画像が読み込まれていません。")
-                self = tk.Label(self, text="画像なし", font=("Arial", self.setting.get_setting_value("ApplicationSettings.FontSize")))
-            else:
-                initial_img_name = random.choice(list(self.character_image_manager.imgs.keys()))
-                img_tk = self.character_image_manager.imgs[initial_img_name]
-                self["image"] = img_tk
-                
-
-            
-
-        except Exception as e: # FileNotFoundError だけでなく一般的なエラーも捕捉
-            print(f"キャラクター画像ウィジェットの作成中にエラーが発生しました: {e}")
-            self = tk.Label(self, text="画像なし", font=("Arial", self.setting.get_setting_value("ApplicationSettings.FontSize")))
-
-    #キャラクター画像の更新
-    def update_image(self, img_name):
-        """表示されているキャラクター画像を更新します。"""
-        if img_name in self.character_image_manager.imgs:
-            new_img_tk = self.character_image_manager.imgs[img_name]
-            self.config(image=new_img_tk)
-        else:
-            print(f"エラー: 画像名 '{img_name}' は CharacterImageManager に見つかりません。")
 
 #左クリック時のメニューバーの管理
 class ContextMenuManager:
@@ -109,6 +59,7 @@ class UI(tk.Tk):
         self.talk_window = UI_talk.TalkWindow(self, self.app, self.setting); self.talk_window.withdraw()
         self.setting_window = UI_settings.UI(self, self.setting); self.setting_window.withdraw()
         
+        
 
         # メインウィンドウの設定
         self.title("デスクトップキャラクター")
@@ -126,13 +77,16 @@ class UI(tk.Tk):
         # 会話ウィンドウのインスタンスを保持する変数 (最初はNone)
 
         # CharacterLabelのインスタンス化と配置
-        self.character_label = CharacterLabel(master=self, click_callback=self._handle_character_click, setting= self.setting )
-        self.character_label.bind("<Button-1>", self.start_drag)
-        self.character_label.bind("<B1-Motion>", self.do_drag)
+        self.charaImg = UI_characterImage.CharacterLabel(master=self, click_callback=self._handle_character_click, setting= self.setting )
+        self.charaImg.bind("<Button-1>", self.start_drag)
+        self.charaImg.bind("<B1-Motion>", self.do_drag)
+
 
         # ContextMenuManagerのインスタンス化
         self.context_menu_manager = ContextMenuManager(app=self.app, ui =self)
-        self.character_label.bind("<Button-3>", self.context_menu_manager.show_menu)
+        self.charaImg.bind("<Button-3>", self.context_menu_manager.show_menu)
+
+        
 
     #ユーザのメッセージ送信
     def _handle_user_message_send(self, message_from_input):
@@ -152,7 +106,8 @@ class UI(tk.Tk):
 
     def update_character_image(self, image_name): # メソッド名を変更: update_character -> update_character_image
         """キャラクターの表示画像を更新します (CharacterLabelへ委譲)。"""
-        self.character_label.update_image(image_name)
+        self.charaImg.update_image(image_name)
+
     
     def start_drag(self, event):
         self.drag_item = event.widget
