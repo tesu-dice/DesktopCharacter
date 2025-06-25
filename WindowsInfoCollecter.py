@@ -3,12 +3,18 @@ Windowsからデータを取得して受け渡す用のクラス
 
 """
 import datetime
+import asyncio
+import threading
 import win32gui #pip install pywin32
 from screeninfo import get_monitors
-
+from winrt.windows.media.control import (
+    GlobalSystemMediaTransportControlsSessionManager as MediaManager,
+    GlobalSystemMediaTransportControlsSessionMediaProperties as MediaProperties,
+    GlobalSystemMediaTransportControlsSessionPlaybackInfo as PlaybackInfo,
+    GlobalSystemMediaTransportControlsSessionPlaybackStatus as PlaybackStatus
+)
 #プログラム間でのインポート
 from config_controller import UserSettings
-
 
 
 class win_info_collector():
@@ -19,19 +25,28 @@ class win_info_collector():
         if debug == True:
             print(self.get_datetime())
             print(self.get_nowday())
-            print(get_TotalMonitorSize(debug=debug))
             print(self.get_activate_window())
+            print(self.get_plaing_media(debug = debug))
+            print(get_TotalMonitorSize(debug=debug))
 
-    #作業中のウィンドウのIDゲットしてそのタイトルを文字列で返す。
+    #作業中のウィンドウのID取得してそのタイトルを文字列で返す。
     def get_activate_window(self):
         window_title = win32gui.GetWindowText(win32gui.GetForegroundWindow())
         return window_title
     
-    #YYYY-MM-DD hh:mm:ss.ssssを文字列で返す。
+
+
+
+    def get_plaing_media(self, debug=False):
+        #実際に動作するのは_get_media_info(). 非同期的に動作するので分割self側で履歴管理とかするならここで。
+        return asyncio.run(_get_media_info())
+
+    
+        
+    # YYYY-MM-DD hh:mm 形式の現在時刻を文字列で返す。
     def get_datetime(self):
-        nowtime = str(datetime.datetime.now())
-        #print("win_info_collecter get_nowtime() nowtime = " + nowtime )
-        return nowtime
+        now = datetime.datetime.now()
+        return now.strftime(f"%Y-%m-%d %H:%M")
 
     #今日の日付を取得
     def get_nowday(self):
@@ -80,6 +95,35 @@ def get_TotalMonitorSize(debug = False):
         print(maxwidth, maxheight, min_x, min_x)
     return maxwidth, maxheight, min_x, min_y
 
+async def _get_media_info(debug = False) -> str:
+    try:
+        media_manager = await MediaManager.request_async()
+        current_session = media_manager.get_current_session()
+        media_properties: MediaProperties = await current_session.try_get_media_properties_async()
+        if media_properties:
+            media_title = media_properties.title if media_properties.title else '[情報なし]'
+            media_artist = media_properties.artist if media_properties.artist else '[情報なし]'
+        playback_info: PlaybackInfo = current_session.get_playback_info()
+        if playback_info:
+            media_state = PlaybackStatus(playback_info.playback_status).name 
+    except Exception as e:
+        print(f"WindowsMediaの取得に失敗しました。エラー:\n   {e}")
+    if debug == True:
+        print(f"現在のメディア状態: {media_state}")
+        print(f"現在のメディアタイトル: {media_title}")
+        print(f"現在のメディアアーティスト: {media_artist}")
+    if media_state == "PLAYING":
+        return f"{media_title} by {media_artist}"
+    else:
+        return "再生中のメディアなし"
+        
+
+
 
 if __name__ == "__main__":
-    this = win_info_collector(debug=True)
+    #テスト用
+    import config_controller
+    setting = config_controller.read_configfile("config.json")
+    if setting is None:
+        print("コンフィグファイルの読み込みに失敗しました。")
+    this = win_info_collector(setting,debug=True)
