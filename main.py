@@ -2,7 +2,7 @@
 いろいろなプログラムの中継訳
 """
 #ライブラリ
-import subprocess
+
 
 #プログラム
 import UI_main
@@ -13,7 +13,14 @@ from talk_VoiceVoxEngine import start_server
 
 
 class myapp():
-    def __init__(self):
+    def __init__(self, debug = -1):
+        #デバックフラグの管理
+        if debug > -1:
+            indent = "  " * debug
+            print(f"{indent}main.py __init__() called.")
+            debug = debug + 1 if debug >= 0 else -1
+            
+            
         #ユーザで他の読み込み
         self.setting = config_controller.read_configfile("config.json")
         if self.setting is None:
@@ -21,12 +28,11 @@ class myapp():
         #VOICEVOXEngineの起動
         if  self.setting.get_setting_value("VoiceSettings.VOICEVOX.autorun") == True and \
             self.setting.get_setting_value("VoiceSettings.VOICEVOX.path") != "":
-            start_server(self.setting.get_setting_value("VoiceSettings.VOICEVOX.path"))
+            self.engine_prosess = start_server(self.setting.get_setting_value("VoiceSettings.VOICEVOX.path"), self.setting.get_setting_value("VoiceSettings.VOICEVOX.usegpu"),debug=debug)
         #各要素の起動
-        
-        self.WinInfo = WindowsInfoCollecter.win_info_collector(self.setting)
-        self.ui = UI_main.UI(self, self.setting)
-        self.ai = geminiAPI.geminiAI(self.setting, self.ui)
+        self.WinInfo = WindowsInfoCollecter.win_info_collector(self.setting, debug=debug)
+        self.ui = UI_main.UI(self, self.setting, debug=debug)
+        self.ai = geminiAPI.geminiAI(self.setting, self.ui, debug=debug)
         
 
         
@@ -41,35 +47,38 @@ class myapp():
 
 
     #入力テキストをAIに伝え、UIにログを追加
-    def SendMessage_toAI(self, text, debug = False):
+    def SendMessage_toAI(self, text, debug = -1):
         t, w, m = "", "", ""
         t = "現在時刻：" + self.WinInfo.get_datetime() + "\n"
         if self.setting.get_setting_value("ApplicationSettings.Permisson.ActiveWindow") == True:
-            w = "作業中窓：" + self.WinInfo.get_activate_window() + "\n"
+            w = "アクティブなウィンドウ：" + self.WinInfo.get_activate_window() + "\n"
         if self.setting.get_setting_value("ApplicationSettings.Permisson.PlayingMedia") == True:
-            m = "再生中のメディア：" + self.WinInfo.get_plaing_media(debug = debug) + "\n"
-        response_text = self.ai.response(t + w + m + text)
-        if debug == True:
-            self.ui.talk_window.add_log(f"{t}{w}{m}>>>\n" + response_text) # AI応答を TalkWindow に追加
+            # デバッグレベルを1つ下げて（インデントを増やして）渡す
+            m = "再生中のメディア：" + self.WinInfo.get_plaing_media(debug = debug + 1 if debug >= 0 else -1) + "\n"
+        response_text = self.ai.response(t + w + m + text, debug=debug)
+        if debug >= 0:
+            indent = "  " * debug
+            self.ui.talk_window.add_log(f"{indent}{t}{w}{m}>>>\n" + response_text) # AI応答を TalkWindow に追加
         else:
             self.ui.talk_window.add_log(f">>>\n" + response_text)
 
     #状態監視の実行
-    def update(self, debug = False):
-        if debug == True:
-            print(f"main.py update() called. activespeak={self.setting.get_setting_value('ApplicationSettings.ActiveSpeak.on/off')}")
+    def update(self, debug = -1):
+        if debug >= 0:
+            indent = "  " * debug
+            print(f"{indent}main.py update() called. activespeak={self.setting.get_setting_value('ApplicationSettings.ActiveSpeak.on/off')}")
         if self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.on/off") == True:    
             if self.WinInfo.check_freetime():
-                self.SendMessage_toAI("System:ユーザは上記のように作業中です。話しかけてください。")
+                # デバッグレベルを1つ下げて（インデントを増やして）渡す
+                self.SendMessage_toAI("System:ユーザは上記のように作業中です。話しかけてください。", debug=debug + 1 if debug >= 0 else -1)
         self.ui.after(10000, self.update)
 
 
 
-
-def start_app(app = None):
-    print("main.py start")
+#アプリの開始関数、app指定あればそれを動かす。なければ再帰的に始動
+def start_app(app = None, debug = -1):
     if app == None:
-        app = myapp()
+        app = myapp(debug = debug)
     app.ui.mainloop()
 
 

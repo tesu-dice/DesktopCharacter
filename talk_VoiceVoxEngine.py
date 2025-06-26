@@ -8,11 +8,20 @@ https://haon-code.com/simple_zundamon/
 
 import requests
 import json
-import time
 import re
 import simpleaudio
 import subprocess
-def start_server(path):
+
+
+# VOICEVOXサーバの起動
+def start_server(path, usegpu:bool, debug = -1):
+    command = [path]
+    command = command.append("--use_gpu") if usegpu==True else command
+    if debug >-1:
+        indent = "  " * debug
+        print(f"{indent}VoiceVoxEngine_talk.py start_server() called. command = {command}")
+        debug = debug + 1 if debug >= 0 else -1
+
     try:
         result = None
         result = subprocess.Popen(path)
@@ -21,6 +30,27 @@ def start_server(path):
         print(e)
     return result
 
+def kill_server(process):
+    if process is None:
+        print("終了対象のプロセスが存在しません。")
+        return
+
+    print(f"プロセスID: {process.pid} を終了します...")
+    try:
+        # Popenオブジェクトのterminate()メソッドを使うのが最も安全で一般的
+        process.terminate()
+        
+        # プロセスが実際に終了するのを少し待つ
+        process.wait(timeout=5) 
+        print("プロセスは正常に終了しました。")
+        
+    except subprocess.TimeoutExpired:
+        print("プロセスが時間内に終了しませんでした。強制終了を試みます。")
+        # terminateで終了しない頑固なプロセスはkillで強制終了
+        process.kill()
+        print("プロセスを強制終了しました。")
+    except Exception as e:
+        print(f"プロセスの終了中にエラーが発生しました: {e}")
 
 
 def audio_query(text, speaker, max_retry):
@@ -59,24 +89,23 @@ def synthesis(speaker, query_data,max_retry):
             return None
             
 
-def text_to_speech(texts, speaker=68, max_retry=20, debug=False):
+def text_to_speech(texts, speaker=68, max_retry=20, debug=-1):
     if not texts: # FalseやNone、空文字列をまとめてチェック
         texts = "ちょっと、通信状態が悪いかも？"
     
-    # ★改善点1: re.splitで末尾に空文字列が生まれることがあるため、フィルタリングする
     sentences = [s for s in re.split("(?<=[！。？])", texts) if s.strip()]
     
     if not sentences: # 分割した結果、文章がなければ何もしない
         return
 
     # デバッグモードの場合、文章を上書き
-    if debug:
+    if debug >= 0:
         sentences = ["デバッグモードで読み上げのテストをしています。"]
 
     play_obj = None
     
     for sentence in sentences:
-        # ★改善点2: 前の音声が再生中なら、終わるまで待つ
+        # 前の音声が再生中なら、終わるまで待つ
         if play_obj and play_obj.is_playing():
             play_obj.wait_done()
             
@@ -96,7 +125,6 @@ def text_to_speech(texts, speaker=68, max_retry=20, debug=False):
             print(f"エラー: 音声生成中に例外が発生しました。テキスト: {sentence}, エラー: {e}")
             continue
 
-        # ★改善点3: 音声データが正常に取得できた場合のみ再生
         # 再生処理
         try:
             wave_obj = simpleaudio.WaveObject(voice_data, 1, 2, 24000)
@@ -104,7 +132,7 @@ def text_to_speech(texts, speaker=68, max_retry=20, debug=False):
         except Exception as e:
             print(f"エラー: 音声の再生に失敗しました。エラー: {e}")
 
-    # ★改善点4: 最後の文章が再生し終わるのを待つ
+    #最後の文章が再生し終わるのを待つ
     if play_obj and play_obj.is_playing():
         play_obj.wait_done()
 
@@ -136,6 +164,7 @@ def get_speakers():
 
 
 if __name__ == "__main__":
+    #このプログラムのみの動作確認
     get_speakers()
     text_to_speech("テスト、テスト。こんにちは、これはvoicevoxの音声テストです。誰がしゃべってるでしょうか？",
                    89

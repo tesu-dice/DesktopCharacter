@@ -87,6 +87,11 @@
             "name": "VOICEVOXの起動パス",
             "value": "C:/Users/owner/AppData/Local/Programs/VOICEVOX/vv-engine/run.exe"
           },
+          "usegpu": {
+            "type": "bool",
+            "name": "音声合成にGPUを使用",
+            "value": true
+          },
           "autorun": {
             "type": "bool",
             "name": "アプリ起動時にエンジンを自動で起動",

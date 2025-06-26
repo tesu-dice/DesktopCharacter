@@ -2,6 +2,8 @@
 Windowsからデータを取得して受け渡す用のクラス
 
 """
+#ライブラリ
+import time
 import datetime
 import asyncio
 import threading
@@ -13,22 +15,26 @@ from winrt.windows.media.control import (
     GlobalSystemMediaTransportControlsSessionPlaybackInfo as PlaybackInfo,
     GlobalSystemMediaTransportControlsSessionPlaybackStatus as PlaybackStatus
 )
+
 #プログラム間でのインポート
 from config_controller import UserSettings
 
 
 class win_info_collector():
-    def __init__(self, UserSetting :UserSettings, debug = False):
+    def __init__(self, UserSetting :UserSettings, debug = -1):
         self.time_init = datetime.datetime.now()
         self.time_last = datetime.datetime.now()
         self.usersetting = UserSetting
-        if debug == True:
-            print(self.get_datetime())
-            print(self.get_nowday())
-            print(self.get_activate_window())
-            print(self.get_plaing_media(debug = debug))
-            print(get_TotalMonitorSize(debug=debug))
-
+        if debug >= 0:
+            indent = "  " * debug
+            print(f"{indent}win_info_collector.__init__() called.")
+            print(f"{indent}{self.get_datetime()}")
+            print(f"{indent}{self.get_nowday()}")
+            print(f"{indent}{self.get_activate_window()}")
+            self.get_plaing_media(debug = debug + 1)
+            get_TotalMonitorSize(debug=debug + 1)
+            debug = debug + 1 if debug >= 0 else -1
+            
     #作業中のウィンドウのID取得してそのタイトルを文字列で返す。
     def get_activate_window(self):
         window_title = win32gui.GetWindowText(win32gui.GetForegroundWindow())
@@ -37,9 +43,9 @@ class win_info_collector():
 
 
 
-    def get_plaing_media(self, debug=False):
+    def get_plaing_media(self, debug=-1):
         #実際に動作するのは_get_media_info(). 非同期的に動作するので分割self側で履歴管理とかするならここで。
-        return asyncio.run(_get_media_info())
+        return asyncio.run(_get_media_info(debug=debug))
 
     
         
@@ -55,11 +61,13 @@ class win_info_collector():
         #print("win_info_collector get_nowday() day = " + str(day) ) 
         return day
     
-    def check_freetime(self, debug = False):
+    def check_freetime(self, debug = -1):
         freetime =  datetime.datetime.now() - self.time_last
         freetime = freetime.seconds
-        if debug == True:
-            print("経過時間(秒) = ", freetime, "会話周期(秒)= ", self.usersetting.get_setting_value("ApplicationSettings.ActiveSpeak.Time"))
+        if debug >= 0:
+            indent = "  " * debug
+            print(f"{indent}経過時間(秒) = ", freetime, "会話周期(秒)= ", self.usersetting.get_setting_value("ApplicationSettings.ActiveSpeak.Time"))
+            debug = debug + 1 if debug >= 0 else -1
         
         if freetime >= self.usersetting.get_setting_value("ApplicationSettings.ActiveSpeak.Time"):
             self.time_last = datetime.datetime.now()
@@ -68,7 +76,7 @@ class win_info_collector():
             return False
     
 # モニターを検出、すべての画面を含んだ左上の座標と右下の座標を取得ー＞左上のx,y、右下までのwidth, height
-def get_TotalMonitorSize(debug = False):
+def get_TotalMonitorSize(debug = -1):
     monitors = get_monitors()
     
     #すべてのウィンドウでの一番左上端を計算
@@ -87,15 +95,17 @@ def get_TotalMonitorSize(debug = False):
         if m.y + m.height > maxheight:
             maxheight = m.y + m.height + abs(min_y)
     
-    if debug == True:
-        print("検出されたモニター:")
+    if debug >= 0:
+        indent = "  " * debug
+        print(f"{indent}get_TotalMonitorSize() called.")
+        print(f"{indent}検出されたモニター:")
         for i, m in enumerate(monitors):
-            print(f"  モニター {i}: 幅={m.width}, 高さ={m.height}, X={m.x}, Y={m.y}, プライマリ={m.is_primary}, ウィンドウ名={m.name}, 画面の長さ{m.height_mm}mm x {m.width_mm}mm")
-        print("関数での返り値:トータル画面幅、トータル画面高さ、左上のx座標、左上のy座標")
-        print(maxwidth, maxheight, min_x, min_x)
+            print(f"{indent}  モニター {i}: 幅={m.width}, 高さ={m.height}, X={m.x}, Y={m.y}, プライマリ={m.is_primary}, ウィンドウ名={m.name}, 画面の長さ{m.height_mm}mm x {m.width_mm}mm")
+        print(f"{indent}全結合画面サイズ{maxwidth}x{maxheight}, 左上の座標(x,y):({min_x}{min_y})")
     return maxwidth, maxheight, min_x, min_y
 
-async def _get_media_info(debug = False) -> str:
+#再生中のメディアを取得
+async def _get_media_info(debug = -1) -> str:
     try:
         media_manager = await MediaManager.request_async()
         current_session = media_manager.get_current_session()
@@ -108,10 +118,12 @@ async def _get_media_info(debug = False) -> str:
             media_state = PlaybackStatus(playback_info.playback_status).name 
     except Exception as e:
         print(f"WindowsMediaの取得に失敗しました。エラー:\n   {e}")
-    if debug == True:
-        print(f"現在のメディア状態: {media_state}")
-        print(f"現在のメディアタイトル: {media_title}")
-        print(f"現在のメディアアーティスト: {media_artist}")
+    if debug >= 0:
+        indent = "  " * debug
+        print(f"{indent}WindowsInfoCollector._get_media_info() called.")
+        print(f"{indent}現在のメディア状態: {media_state}")
+        print(f"{indent}現在のメディアタイトル: {media_title}")
+        print(f"{indent}現在のメディアアーティスト: {media_artist}")
     if media_state == "PLAYING":
         return f"{media_title} by {media_artist}"
     else:
@@ -121,9 +133,9 @@ async def _get_media_info(debug = False) -> str:
 
 
 if __name__ == "__main__":
-    #テスト用
+    #このプログラムのみのテスト用
     import config_controller
     setting = config_controller.read_configfile("config.json")
     if setting is None:
         print("コンフィグファイルの読み込みに失敗しました。")
-    this = win_info_collector(setting,debug=True)
+    this = win_info_collector(setting,debug=0)

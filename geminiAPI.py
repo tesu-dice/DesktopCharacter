@@ -18,7 +18,7 @@ import threading
 import talk_VoiceVoxEngine 
 import talk_WindowsNarratorManager 
 from config_controller import UserSettings
-from UI_main import UI
+from UI_main import UI, send_message
 
 
 
@@ -26,16 +26,17 @@ from UI_main import UI
 
 class geminiAI():
         #初期化
-        def __init__(self, usersetting:UserSettings, ui:UI):
+        def __init__(self, usersetting:UserSettings, ui:UI, debug = -1):
             self.usersetting = usersetting
             self.ui = ui
-            #APIkeyの設定
+            yourAPIkey = self.usersetting.get_setting_value("ApplicationSettings.geminiAPIkey")#APIkeyの設定
+            if debug >= 0:
+                indent = "  " * debug
+                print(f"{indent}geminiAPI.__init__() called.")
+                print(f"{indent}yourAPIkey = {yourAPIkey}")
+                debug = debug + 1 if debug >= 0 else -1
 
-            # f = open("myAPI.txt", "r")
-            # yourAPIkey = f.readline()
-            # f.close()
-            yourAPIkey = self.usersetting.get_setting_value("ApplicationSettings.geminiAPIkey")
-            print("APIkey = ",yourAPIkey)
+            
             genai.configure(api_key=yourAPIkey)
 
             #会話設定
@@ -103,7 +104,7 @@ class geminiAI():
                     print(m.name)
         
         #入力文字列をAIに送信、返答を返す。
-        def response(self, input_text):
+        def response(self, input_text, debug=-1):
             input_content = [{"role": "user", "parts":[input_text]}]
             #送信するコンテンツの選別
             if len(self.history) > 7:
@@ -124,7 +125,7 @@ class geminiAI():
             
             #
             #threadを使って音声処理を並列化
-            thread = threading.Thread(target=self.Reflecting_textResponsestoUI, args=(response.text,))
+            thread = threading.Thread(target=self.Reflecting_textResponsestoUI, args=(response.text, debug))
             thread.daemon = True
             thread.start()
             print("thread main keeped")
@@ -154,7 +155,7 @@ class geminiAI():
             print("-----------------------------\n")
         
         
-        def Reflecting_textResponsestoUI(self, texts, debug=False):
+        def Reflecting_textResponsestoUI(self, texts, debug=-1):
             #テキストを読み上げモード別に読み上げる
             mode = self.usersetting.get_setting_value("VoiceSettings.engine")
             for text in texts.split("\n"):
@@ -165,23 +166,24 @@ class geminiAI():
                     text = text.split("：")[-1]
 
                 
-                if(debug == True):
-                    print("geminiAPI.py speech_text() was called.",mode, text)
+                if(debug >= 0):
+                    indent = "  " * debug
+                    print(f"{indent}geminiAPI.py speech_text() was called.",mode, text)
+                    debug = debug + 1
                 if(mode == "None"):
                     return
                 elif(mode == "WindowsNarrator"):
                     model_description = self.usersetting.get_setting_value("VoiceSettings.windowsNarrator.Model")
-                    talk_WindowsNarratorManager.text_to_speech(text, model_description)
+                    talk_WindowsNarratorManager.text_to_speech(text, model_description, debug=debug)
                 elif(mode == "VOICEVOX"):
                     chosen_value = self.usersetting.get_setting_value("VoiceSettings.VOICEVOX.Model")
                     id = str(chosen_value).split("=")[-1]
-                    talk_VoiceVoxEngine.text_to_speech(text, int(id))
+                    talk_VoiceVoxEngine.text_to_speech(text, int(id), debug=debug)
                 else:
-                    print("error : geminiAPI.py speech_text() unknown mode.")
+                    send_message("エラー", f"音声読み上げにおいて対応していない読み上げモードが選択されています。{mode}")
+                    
         
 
-
+#プログラムの依存関係上テストできない
 if __name__ == "__main__":
-    #テスト用
-    import main
-    main.start_app()
+    pass

@@ -7,14 +7,15 @@
 # UI.py
 import tkinter as tk
 from tkinter import ttk  # スタイル付きウィジェットのため
+from tkinter import messagebox
 import random  # 初期立ち絵をランダムに設定するため
 # プログラム同士のやり取り
-#from main import myapp
+from config_controller import UserSettings
+from talk_VoiceVoxEngine import kill_server
 import UI_characterImage
 from WindowsInfoCollecter import get_TotalMonitorSize
 import UI_settings
-import config_controller
-from config_controller import UserSettings
+
 import UI_talk # UI_talk モジュールをインポート
 
 
@@ -46,14 +47,21 @@ class ContextMenuManager:
 
 
     def exit_app(self):
+        kill_server(self.app.engine_prosess)
         self.ui.destroy()
+
 
 
 
 # UI全体の管理
 class UI(tk.Tk):
-    def __init__(self, app, setting:UserSettings):
+    def __init__(self, app, setting:UserSettings, debug =-1):
         super().__init__()
+        if debug >= 0:
+            indent = "  " * debug
+            print(f"{indent}UI.py __init__() called.")
+            send_message("デバックメッセージ", "UI_main.py sendmessage()の動作確認です。")
+            debug = debug + 1 if debug >= 0 else -1
         self.app = app
         self.setting = setting
         self.talk_window = UI_talk.TalkWindow(self, self.app, self.setting); self.talk_window.withdraw()
@@ -121,8 +129,12 @@ class UI(tk.Tk):
             self.drag_item.place(x=new_x, y=new_y)
 
 
+def send_message(title:str, message:str)->bool:
+    result = messagebox.askyesno(title, message)
+    return result
+    
 
 if __name__ == "__main__":
-    import main
-    main.start_app()
+    import main 
+    main.start_app(debug=0)
     
