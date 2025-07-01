@@ -1,8 +1,8 @@
 #git ignore file
-windows-nvidia/
 **__pycache__**
 **立ち絵**
 myAPI.txt
 Character_setting.txt
+config.json
 GoogleCalendarAPI.json
 token.json

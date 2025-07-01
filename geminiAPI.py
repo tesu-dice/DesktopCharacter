@@ -187,7 +187,7 @@ class geminiAI():
                     id = str(chosen_value).split("=")[-1]
                     talk_VoiceVoxEngine.text_to_speech(text, int(id), debug=debug)
                 else:
-                    send_message("エラー", f"音声読み上げにおいて対応していない読み上げモードが選択されています。{mode}")
+                    self.ui.show_message_box("エラー", f"音声読み上げにおいて対応していない読み上げモードが選択されています。{mode}")
                     
         
 

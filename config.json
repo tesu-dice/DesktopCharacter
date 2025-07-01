@@ -6,7 +6,7 @@
       "geminiAPIkey": {
         "name": "geminiAPIkey",
         "type": "str",
-        "value": "Your gemini API here"
+        "value": "AIzaSyAT2ZbaNSTWpb27TLaevtA_qQaCGC9FSrY"
       },
       "CharacterFolder": {
         "name": "キャラクターの立ち絵",
@@ -46,12 +46,12 @@
           "ActiveWindow": {
             "name": "作業中のウィンドウ",
             "type": "bool",
-            "value": false
+            "value": true
           },
           "PlayingMedia": {
             "name": "再生中のメディア",
             "type": "bool",
-            "value": false
+            "value": true
           }
         }
       }
@@ -64,7 +64,7 @@
       "engine": {
         "name": "音声合成エンジン",
         "type": "choice",
-        "value": "WindowsNarrator",
+        "value": "VOICEVOX",
         "options": [
           "None",
           "WindowsNarrator",
@@ -95,17 +95,17 @@
           "usegpu": {
             "type": "bool",
             "name": "音声合成にGPUを使用",
-            "value": false
+            "value": true
           },
           "autorun": {
             "type": "bool",
             "name": "アプリ起動時にエンジンを自動で起動",
-            "value": false
+            "value": true
           },
           "Model": {
             "type": "choice",
             "name": "音声モデル",
-            "value": "",
+            "value": "四国めたん(ノーマル)=2",
             "options": []
           }
         }

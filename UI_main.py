@@ -131,7 +131,6 @@ class UI(tk.Tk):
             self.drag_item.place(x=new_x, y=new_y)
 
 
-    @staticmethod
     def show_message_box(title:str, message:str)->bool:
         return messagebox.askyesno(title, message)
 
