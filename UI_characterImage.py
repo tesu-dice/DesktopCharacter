@@ -21,16 +21,18 @@ from WindowsInfoCollecter import get_TotalMonitorSize
 
 #キャラクター画像を管理するクラス
 class charaimg_controller():
-    def __init__(self, win_h, win_w, dir_path = "立ち絵/"):
+    def __init__(self, win_h, win_w, setting:UserSettings):
         self.win_h = win_h
         self.win_w = win_w
+        self.setting = setting
         self.imgs ={} #画像名：画像ファイルの辞書
+
         
         self.load_imgs()
         
     #キャラクター画像の読み取り
-    def load_imgs(self, files_path = None):
-        dir_path = "立ち絵/"
+    def load_imgs(self):
+        dir_path = f"立ち絵/{self.setting.get_setting_value('ApplicationSettings.CharacterFolder')}/"
         files = os.listdir(dir_path)
         #画像の名前と画像を適正サイズに変更して保存
         for f in files :
@@ -52,18 +54,9 @@ class CharacterLabel(tk.Label):
         self.config(activebackground=self.master.cget("background"))
         self.click_callback = click_callback
         self.setting = setting
+        
         _size = self.setting.get_setting_value("ApplicationSettings.CharacterSize")
-        self.ImageController = charaimg_controller(win_h=_size, win_w=_size)
-
-        #tk.Tkの縦横のサイズを取得(適切に取得できず、1,が返される)
-        # print("UIのウィジェットのサイズ")
-        # print(self.master.winfo_screenwidth())
-        # print(self.master.winfo_screenheight())
-        # print(self.master.geometry()) # まだ配置してない状態で参照するので1+1
-        # print(self.master.winfo_geometry())
-        # print(self.winfo_geometry)
-        _size = self.setting.get_setting_value("ApplicationSettings.CharacterSize")
-        self.character_image_manager = charaimg_controller(win_h=_size, win_w=_size)
+        self.character_image_manager = charaimg_controller(win_h=_size, win_w=_size, setting=self.setting)
         self._init_image()
         self.place( x=self.master.winfo_screenwidth()/4*3 + abs(get_TotalMonitorSize()[2]),
                     y=self.master.winfo_screenheight()/2 + abs(get_TotalMonitorSize()[3])
@@ -100,5 +93,5 @@ class CharacterLabel(tk.Label):
 
 if __name__ == "__main__":
     import main
-    main.start_app()
+    main.start_app(debug=0)
 

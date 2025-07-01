@@ -8,6 +8,7 @@
 import tkinter as tk
 from tkinter import ttk  # スタイル付きウィジェットのため
 from tkinter import messagebox
+import os
 import random  # 初期立ち絵をランダムに設定するため
 # プログラム同士のやり取り
 from config_controller import UserSettings
@@ -47,7 +48,8 @@ class ContextMenuManager:
 
 
     def exit_app(self):
-        kill_server(self.app.engine_prosess)
+        if self.app.engine_prosess is not None:
+            kill_server(self.app.engine_prosess)
         self.ui.destroy()
 
 
@@ -60,11 +62,11 @@ class UI(tk.Tk):
         if debug >= 0:
             indent = "  " * debug
             print(f"{indent}UI.py __init__() called.")
-            send_message("デバックメッセージ", "UI_main.py sendmessage()の動作確認です。")
+            UI.show_message_box("デバックメッセージ", "UI_main.py show_message_box()の動作確認です。")
             debug = debug + 1 if debug >= 0 else -1
         self.app = app
         self.setting = setting
-        self.talk_window = UI_talk.TalkWindow(self, self.app, self.setting); self.talk_window.withdraw()
+        self.talk_window = UI_talk.TalkWindow(self, self.app, self.setting, debug=debug); self.talk_window.withdraw()
         self.setting_window = UI_settings.UI(self, self.setting); self.setting_window.withdraw()
         
         
@@ -129,10 +131,11 @@ class UI(tk.Tk):
             self.drag_item.place(x=new_x, y=new_y)
 
 
-def send_message(title:str, message:str)->bool:
-    result = messagebox.askyesno(title, message)
-    return result
-    
+    @staticmethod
+    def show_message_box(title:str, message:str)->bool:
+        return messagebox.askyesno(title, message)
+
+
 
 if __name__ == "__main__":
     import main 

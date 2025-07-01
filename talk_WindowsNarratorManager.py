@@ -35,7 +35,12 @@ def get_SAPIVoice_names():
 
 #テキストをモデル名、速度に合わせて読み上げ。
 #読み上げる文字列、会話に使用するモデル名、読み上げ速度(-10.0~10.0)
-def text_to_speech(text, model_description, rate= 2.0):
+def text_to_speech(text, model_description, rate= 2.0, debug=-1):
+    if debug >= 0:
+        indent = "  " * debug
+        print(f"{indent}windowsNarrator.py text_to_speech() called.")
+        print(f"{indent}text = {text}")
+        print(f"{indent}model_description = {model_description}")
     #print(f"windowsNarrator.py text_to_speech(), text={text}, {model_description}, rate={rate}")
     sapi = win32com.client.Dispatch("SAPI.SpVoice")
     try:
@@ -51,9 +56,11 @@ def text_to_speech(text, model_description, rate= 2.0):
         for model in speakers:
             if model_description == model.GetDescription():
                 break
+
         sapi.Voice = model
         sapi.Rate = rate
         sapi.Speak(text)
+
     except Exception as e:
         print(f"SAPIを使った読み上げでエラーが発生しました。\n{ e }")
     
@@ -62,7 +69,9 @@ def text_to_speech(text, model_description, rate= 2.0):
 if __name__ == "__main__":
     models = get_SAPIVoice_names()
     print(models)
-    text_to_speech("読み上げテストです。", models[0])
+    for i in models:
+        print(i)
+        text_to_speech("Hello. 読み上げテストです。", i)
     """
     #2chのyoutubeShortsぽい読み上げテスト
     text_to_speech("とある会社の駐車場で休憩していた２人がいました。", models[0])

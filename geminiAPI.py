@@ -15,18 +15,15 @@ import google.generativeai as genai
 import threading
 
 #プログラムの読み込み
-import talk_VoiceVoxEngine 
+import talk_VoiceVoxEngine
 import talk_WindowsNarratorManager 
 from config_controller import UserSettings
-from UI_main import UI, send_message
-
-
 
 
 
 class geminiAI():
         #初期化
-        def __init__(self, usersetting:UserSettings, ui:UI, debug = -1):
+        def __init__(self, usersetting:UserSettings, ui, debug = -1):
             self.usersetting = usersetting
             self.ui = ui
             yourAPIkey = self.usersetting.get_setting_value("ApplicationSettings.geminiAPIkey")#APIkeyの設定
@@ -40,13 +37,23 @@ class geminiAI():
             genai.configure(api_key=yourAPIkey)
 
             #会話設定
-            img_names_text = self.load_imgs()
+            base_prompt =   "あなたはユーザのPC上で動作するキャラクターです。以下の応答規則、キャラクター設定に従って受け答えをしてください。\n" \
+                            "#応答規則\n" \
+                            "セリフはキャラクターとして会話するように応答し、文章量は最大で3文程度としてください。\n" \
+                            "立ち絵ファイル名は下に示されたのみとし、セリフと合わせて適切なものを選択してください。\n" \
+                            "###応答例（立ち絵ファイル名：セリフ）\n"\
+                            "平穏.png：おはようございます。\n" \
+                            "笑顔.tiff：今日もいい天気ですね。\n" \
+                            "期待.png：今日も一日頑張りましょう。\n"\
+                            "###立ち絵ファイル名\n"
+            
+            base_prompt += self.load_imgs()+"\n#キャラクター設定\n"
             f= open("Character_setting.txt", encoding="utf-8")
             setting=""
             for line in f:
                 line.strip("\n")
                 setting +=line
-            setting += img_names_text
+            setting
             f.close()
             # print(setting)
             # input()
@@ -84,14 +91,14 @@ class geminiAI():
                                         generation_config= generation_config,
                                         safety_settings=safety_settings)
 
-            self.history = [{"role": "user", "parts":[setting]}, {"role": "model", "parts":["了解しました。"]}]
+            self.history = [{"role": "user", "parts":[base_prompt + setting]}, {"role": "model", "parts":["了解しました。"]}]
             
-
+        #キャラクター画像を読み込み、AIへ指示書として返す。
         def load_imgs(self):
             import os
-            dir_path = "立ち絵/"
+            dir_path = f"立ち絵/{self.usersetting.get_setting_value('ApplicationSettings.CharacterFolder')}/"
             files = os.listdir(dir_path)
-            text = "また、表情の種類は次のようになっています。"+ str(files)
+            text = str(files)
             return text
             
         

@@ -10,13 +10,14 @@ import config_controller
 
 class TalkWindow(tk.Toplevel):
     """ログ表示とユーザー入力のための Toplevel ウィンドウです。"""
-    def __init__(self, master, master_controller, setting: config_controller.UserSettings):
+    def __init__(self, master, master_controller, setting: config_controller.UserSettings, debug=-1):
         # Toplevelとしての初期化
         super().__init__(master)
         self.title("会話")
         # 初期サイズと位置は適宜調整してください
         self.geometry(f"{500}x{400}")
         # self.geometry(f"{setting.get_setting_value('otherSettings.textWindowSize.width')}x{setting.get_setting_value('otherSettings.textWindowSize.height')}") # 設定ファイルから読み込む場合
+        self.debug = debug # デバッグレベルをインスタンス変数として保持
         self.master_controller = master_controller
         self.setting = setting
 
@@ -59,14 +60,14 @@ class TalkWindow(tk.Toplevel):
         self.bar_vertical_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.message_text["yscrollcommand"] = self.bar_vertical_scroll.set
 
-    def _on_send_click(self, event=None): # Enterキー対応のため event=None を追加
+    def _on_send_click(self, event=None): # debug引数を削除し、self.debugを使用
         """送信ボタンクリックまたはEnterキー押下時の処理"""
         message = self.input_text.get()
         if message:
             # ユーザーメッセージをログに追加
             self.add_log("あなた: " + message)
             # master_controller 経由でAIに送信
-            self.master_controller.SendMessage_toAI(message)
+            self.master_controller.SendMessage_toAI(message, debug=self.debug)
             # 入力フィールドをクリア
             self.input_text.delete(0, tk.END)
 
@@ -80,4 +81,4 @@ class TalkWindow(tk.Toplevel):
 
 if __name__ == "__main__":
     import main
-    main.start_app()
+    main.start_app(debug=0)

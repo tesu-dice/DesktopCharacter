@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DesktopCharacter Readme & 使い方</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Meiryo", "Yu Gothic", sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-family: "Consolas", "Monaco", monospace;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .warning {
+            background-color: #fffbe6;
+            border-left: 4px solid #ffc107;
+            padding: 12px 20px;
+            margin: 20px 0;
+        }
+        .credits-list {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .credits-list li {
+            margin-bottom: 10px;
+        }
+        pre {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <h1>DesktopCharacter へようこそ</h1>
+
+    <div class="section">
+        <h2>はじめに</h2>
+        <p>このアプリケーションは、あなたのデスクトップに常駐するキャラクターと会話を楽しむためのものです。AIとの対話や、あなたのPC利用状況に応じたコミュニケーションを楽しむことができます。</p>
+    </div>
+
+    <div class="section">
+        <h2>動作環境</h2>
+        <ul>
+            <li>OS: Windows 10 / 11</li>
+            <li>AI対話API: Google Gemini API (APIキーが別途必要です)</li>
+            <li>音声合成エンジン: <a href="https://voicevox.hiroshiba.jp/" target="_blank">VOICEVOX</a> または Windows標準ナレーター (VOICEVOXを利用する場合は別途インストールと起動が必要です)</li>
+        </ul>
+    </div>
+
+    <div class="warning">
+        <h3><span style="color: #d9534f;">■</span> 重要: ご利用になる前に</h3>
+        <p>
+            本アプリケーションをご利用になる前に、必ず以下の<strong>利用規約</strong>と<strong>プライバシーポリシー</strong>をお読みいただき、同意の上でご使用ください。アプリケーションの利用を開始した時点で、これらの規約に同意したものとみなします。
+        </p>
+    </div>
+
+    <div class="section">
+        <h2>ライセンス (License)</h2>
+        <p>
+            本ソフトウェアは <strong>MIT License</strong> の下で配布されています。
+            ライセンスの全文は、同梱の `LICENSE` ファイルをご確認ください。
+        </p>
+    </div>
+
+    <div class="section">
+        <h2>利用規約 (Terms of Service)</h2>
+        <h3>免責事項</h3>
+        <p>
+            本ソフトウェアの利用により生じたいかなる損害についても、開発者は一切の責任を負いません。自己の責任においてご利用ください。
+            特に、外部APIの利用料金については、利用者ご自身の負担となります。
+        </p>
+        <h3>禁止事項</h3>
+        <ul>
+            <li>法令または公序良俗に違反する目的での使用</li>
+            <li>本ソフトウェアの改造、リバースエンジニアリング、逆コンパイル、逆アセンブル</li>
+            <li>キャラクターの自作発言や、開発者の許可なく本ソフトウェアおよびその複製物を二次配布、販売する行為</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>プライバシーポリシー (Privacy Policy)</h2>
+        <p>
+            本アプリケーションは、キャラクターとの自然な対話を実現するために、以下の情報を取得・利用します。
+        </p>
+        <h3>1. 取得する情報</h3>
+        <ul>
+            <li><strong>ユーザーが入力したテキスト:</strong> AIとの対話のために利用します。</li>
+            <li><strong>アクティブウィンドウのタイトル名:</strong> キャラクターがユーザーの作業状況に応じた会話をするために利用します。 (設定でON/OFF可能)</li>
+            <li><strong>再生中のメディア情報（曲名、アーティスト名）:</strong> キャラクターが再生中の音楽について会話するために利用します。 (設定でON/OFF可能)</li>
+        </ul>
+        <h3>2. 情報の利用目的</h3>
+        <p>
+            取得した情報は、キャラクターとの対話内容をAIが生成する目的でのみ利用されます。
+        </p>
+        <h3>3. 情報の第三者提供</h3>
+        <p>
+            キャラクターとの対話内容を生成するため、取得した情報を暗号化された通信（HTTPS）を用いて以下の外部APIサービスに送信します。
+        </p>
+        <ul>
+            <li><strong>Google Gemini API:</strong> ユーザーとの対話内容を生成するために、入力テキストやPC利用状況の情報を送信します。</li>
+        </ul>
+        <p>
+            開発者がこれらの情報を収集、保存、閲覧することはありません。外部APIサービスのプライバシーポリシーについては、各サービスの公式サイトをご確認ください。
+        </p>
+    </div>
+
+    <div class="section">
+        <h2>インストールと初期設定</h2>
+        <ol>
+            <li>アプリケーションをダウンロードし、任意のフォルダに展開します。</li>
+            <li><strong>Gemini APIキーの取得:</strong> <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a> にアクセスし、APIキーを生成・コピーします。</li>
+            <li><strong>VOICEVOXの準備 (利用する場合):</strong> <a href="https://voicevox.hiroshiba.jp/" target="_blank">VOICEVOX公式サイト</a>からVOICEVOXをダウンロードし、インストール・起動してください。</li>
+            <li><strong>アプリケーションの起動と設定:</strong>
+                <ul>
+                    <li>アプリケーションを起動し、設定画面を開きます。</li>
+                    <li>「geminiAPIkey」の項目に、コピーしたAPIキーを貼り付けます。</li>
+                    <li>設定を保存します。APIキーが設定されていない場合、対話機能は利用できません。</li>
+                </ul>
+            </li>
+        </ol>
+    </div>
+
+    <div class="section">
+        <h2>キャラクター設定</h2>
+        <h3>キャラクター画像の変更</h3>
+        <p>アプリケーションのインストールフォルダ内の「立ち絵」フォルダに、キャラクターの画像ファイル（.png）を配置します。画像ファイル名は、キャラクターの表情を表すものにしてください。（例：「通常.png」「笑い.png」「怒り.png」）</p>
+        
+        <h3>キャラクター設定テキストの編集</h3>
+        <p>アプリケーションのインストールフォルダ内の「Character_setting.txt」ファイルをテキストエディタで開き、キャラクターの性格や口調などを記述します。この内容は、AIがキャラクターとして返答を生成する際の参考にされます。</p>
+        <pre>
+# キャラクター設定の例
+名前：てすこ
+性格：明るく元気で、少しおっちょこちょい。ユーザーのPC作業を応援するのが好き。
+口調：～だよ！、～だね！、～なんだ♪
+一人称：わたし
+好きなもの：新しいソフトウェア、面白い動画
+嫌いなもの：フリーズ、エラーメッセージ
+        </pre>
+    </div>
+
+    <div class="section">
+        <h2>クレジット (Credits)</h2>
+        <p>本アプリケーションは、以下の素晴らしいソフトウェアや素材を利用して制作されています。各素材の利用規約を遵守してください。</p>
+        <ul class="credits-list">
+            <li>
+                <strong>音声合成 (Voice Synthesis):</strong>
+                <ul>
+                    <li>VOICEVOX: [使用キャラクター名] (例: ずんだもん, 四国めたん)</li>
+                    <li><small>※VOICEVOXの利用規約に基づきクレジットを表記しています。</small></li>
+                </ul>
+            </li>
+            <li>
+                <strong>キャラクター立ち絵 (Character Artwork):</strong>
+                <ul>
+                    <li>[立ち絵の素材名やシリーズ名] by [作者名]</li>
+                    <li><small>※立ち絵作者様の利用規約を必ずご確認ください。</small></li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>トラブルシューティング</h2>
+        <ul>
+            <li><strong>キャラクターが話さない:</strong>
+                <ul>
+                    <li>Gemini APIキーが正しく設定されているか確認してください。</li>
+                    <li>インターネット接続が正常であるか確認してください。</li>
+                    <li>VOICEVOXを利用している場合、VOICEVOXエンジンが起動しているか確認してください。</li>
+                </ul>
+            </li>
+            <li><strong>設定が反映されない:</strong>
+                <ul>
+                    <li>設定を保存した後、アプリケーションを再起動してみてください。</li>
+                    <li>設定ファイル（config.json）が破損していないか確認してください。</li>
+                </ul>
+            </li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>連絡先 (Contact)</h2>
+        <p>
+            不具合の報告やご意見、ご感想は、以下のGooGleフォームにお願いします。
+        </p>
+        <p>
+            <a href="https://forms.gle/EToA3Br1aCPwUmqU8" target="_blank">連絡フォーム</a>
+        </p>
+    </div>
+
+</body>
+</html>
