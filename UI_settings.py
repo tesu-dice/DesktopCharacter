@@ -191,7 +191,7 @@ class UI(tk.Toplevel):
                 _filetypes =[("VOICEVOXEngineの実行ファイル", "run.exe"),("すべてのファイル", "*.*")]
             else:
                 _filetypes =[("すべてのファイル", "*.*")]
-            button = ttk.Button(parent_widget_frame, text="フォルダを選択", command=lambda:select_file_path(var, _filetypes))
+            button = ttk.Button(parent_widget_frame, text="ファイルを選択", command=lambda:select_file_path(var, _filetypes))
             button.grid(row=0, column=2, sticky="ew", padx=5)
             #値の変化を追跡
             var.trace_add("write", lambda *args, p=full_path, v=var: self.settings.set_setting_value(p, v.get()))
