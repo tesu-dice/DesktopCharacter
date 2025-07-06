@@ -1,5 +1,5 @@
 """
-いろいろなプログラムの中継訳
+いろいろなプログラムの起動と管理を行うメインプログラム
 """
 #ライブラリ
 import os
@@ -10,6 +10,7 @@ import geminiAPI
 import WindowsInfoCollecter
 import config_controller
 from talk_VoiceVoxEngine import start_server
+from release_check import check_nowver_is_newestver, CURRENT_APP_VERSION
 
 
 class myapp():
@@ -19,6 +20,16 @@ class myapp():
             indent = "  " * debug
             print(f"{indent}main.py __init__() called.")
             debug = debug + 1 if debug >= 0 else -1
+            
+        #リリースバージョンの確認
+        CURRENT_APP_VERSION = "v0.0" # 現在のバージョンを設定
+        _result = check_nowver_is_newestver("tesu-dice", "release_check")
+        if _result[0] == False:
+            print(f"新しいバージョンが利用可能です！ 最新バージョン: {_result[1]}, 現在のバージョン: {_result[2]}")
+            print("最新版をダウンロードしてください")
+        else :
+            print(f"お使いのバージョンは最新です。 最新バージョン: {_result[1]}, 現在のバージョン: {_result[2]}")
+             
             
             
         #ユーザで他の読み込み
