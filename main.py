@@ -14,7 +14,7 @@ from release_check import check_nowver_is_newestver, CURRENT_APP_VERSION
 
 
 class myapp():
-    def __init__(self, debug = -1):
+    def __init__(self, engine_prosess = None, debug = -1):
         #デバックフラグの管理
         if debug > -1:
             indent = "  " * debug
@@ -37,8 +37,10 @@ class myapp():
         if self.setting is None:
             print("コンフィグファイルの読み込みに失敗しました。")
         #VOICEVOXEngineの起動
-        self.engine_prosess = None
-        if  self.setting.get_setting_value("VoiceSettings.engine") == "VOICEVOX" and \
+        self.engine_prosess = engine_prosess
+        
+        if  self.engine_prosess == None and \
+            self.setting.get_setting_value("VoiceSettings.engine") == "VOICEVOX" and \
             self.setting.get_setting_value("VoiceSettings.VOICEVOX.autorun") == True and \
             self.setting.get_setting_value("VoiceSettings.VOICEVOX.path") != "":
             print("VOICEVOXEngine起動")
@@ -55,8 +57,8 @@ class myapp():
     #アプリケーションの再起動
     def reboot_app(self):
         self.ui.destroy()
-        self.__init__()
-        start_app(self)
+        self.__init__(engine_prosess=self.engine_prosess)
+        start_app(app = self)
 
 
 
