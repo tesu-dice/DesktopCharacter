@@ -67,18 +67,16 @@ class CharacterLabel(tk.Label):
         try:
             if not self.character_image_manager.imgs:
                 print("エラー: CharacterImageManagerによって画像が読み込まれていません。")
-                self = tk.Label(self, text="画像なし", font=("Arial", self.setting.get_setting_value("ApplicationSettings.FontSize")))
+                self.config(text="画像なし") # 画像がない場合、テキストを表示
             else:
                 initial_img_name = random.choice(list(self.character_image_manager.imgs.keys()))
                 img_tk = self.character_image_manager.imgs[initial_img_name]
                 self["image"] = img_tk
                 
 
-            
-
         except Exception as e: # FileNotFoundError だけでなく一般的なエラーも捕捉
             print(f"キャラクター画像ウィジェットの作成中にエラーが発生しました: {e}")
-            self = tk.Label(self, text="画像なし", font=("Arial", self.setting.get_setting_value("ApplicationSettings.FontSize")))
+            self.config(text="画像なし") # エラー時にもテキストを表示
 
     #キャラクター画像の更新
     def update_image(self, img_name):
@@ -94,4 +92,3 @@ class CharacterLabel(tk.Label):
 if __name__ == "__main__":
     import main
     main.start_app(debug=0)
-

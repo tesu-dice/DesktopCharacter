@@ -37,7 +37,7 @@ class TalkWindow(tk.Toplevel):
         input_frame = tk.Frame(main_frame)
         input_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(5, 0))
 
-        self.input_text = tk.Entry(input_frame, font=("Arial", self.setting.get_setting_value("ApplicationSettings.FontSize")))
+        self.input_text = tk.Entry(input_frame)
         self.input_text.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
         self.input_text.bind("<Return>", self._on_send_click) # Enterキーで送信
 
@@ -51,7 +51,7 @@ class TalkWindow(tk.Toplevel):
         log_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
         self.message_text = tk.Text(log_frame, wrap="word", state="disabled",
-                                    background="#F0F0F0", font=("Arial", self.setting.get_setting_value("ApplicationSettings.FontSize")))
+                                    background="#F0F0F0")
         self.message_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         self.bar_vertical_scroll = tk.Scrollbar(
