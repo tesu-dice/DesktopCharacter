@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VOICEVOXとの連携について</title>
+    <style>
+        body {
+            font-family: 'Meiryo', 'メイリオ', 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        h1, h2, h3 {
+            border-bottom: 2px solid #77dd77;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+        h1 {
+            font-size: 2em;
+        }
+        h2 {
+            font-size: 1.5em;
+        }
+        h3 {
+            font-size: 1.2em;
+            border-bottom-style: dotted;
+        }
+        code {
+            background-color: #eee;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', monospace;
+        }
+        .caution {
+            background-color: #fff0f0;
+            border-left: 5px solid #f00;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        ol, ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>VOICEVOXとの連携について</h1>
+        <p>
+            このドキュメントでは、本アプリケーションと音声合成ソフトウェア「VOICEVOX」を連携させ、キャラクターの音声をVOICEVOXの音声に変更する方法について説明します。
+        </p>
+
+        <h2>事前準備</h2>
+        <p>
+            連携を行う前に、お使いのPCにVOICEVOXがインストールされている必要があります。<br>
+            まだインストールされていない場合は、以下の公式サイトからダウンロードしてインストールを完了させてください。
+        </p>
+        <ul>
+            <li><a href="https://voicevox.hiroshiba.jp/" target="_blank">VOICEVOX公式サイト</a></li>
+        </ul>
+
+        <h2>連携方法</h2>
+        <p>連携には2つの方法があります。ご自身の使い方に合わせてお好きな方法を選択してください。</p>
+
+        <h3>方法1：かんたんな方法（VOICEVOXを起動してからアプリを起動する）</h3>
+        <p>
+            最も手軽な方法です。キャラクターと会話したいときに、都度VOICEVOXを起動します。
+        </p>
+        <ol>
+            <li>VOICEVOXを起動します。</li>
+            <li>タスクトレイにVOICEVOXのアイコンが表示され、起動が完了したことを確認します。</li>
+            <li>本アプリケーションを起動します。</li>
+            <li>アプリケーションの設定画面を開き、音声エンジンとして「VOICEVOX」を選択します。</li>
+            <li>音声を使用するモデルを指定し、設定を保存、アプリケーションを再起動します。</li>
+
+        </ol>
+        <p>
+            これで設定は完了です。以降、キャラクターが話す際にVOICEVOXが使用されるようになります。<br>
+            <strong>※この方法の場合、本アプリケーションを使用する際は、常にVOICEVOXを先に起動しておく必要があります。</strong>
+        </p>
+
+        <h3>方法2（推奨）：自動起動設定（アプリからVOICEVOXを自動で起動する）</h3>
+        <p>
+            本アプリケーションの起動時に、VOICEVOXも自動で起動するように設定する方法です。毎回VOICEVOXを起動する手間が省けます。
+        </p>
+        <ol>
+            <li>
+                VOICEVOXの実行ファイル（<code>run.exe</code>）の場所を確認します。<br>
+                通常、以下のどちらか場所にあるとおもいます。（見つからない場合は、VOICEVOXのショートカットを右クリックし、「ファイルの場所を開く」で確認してください）
+                <p><code>C:\Program Files\VOICEVOX\vv-engine\run.exe</code></p>
+                <p><code>C:\Users\[あなたのユーザー名]\AppData\Local\Programs\VOICEVOX\vv-engine\run.exe</code></p>
+            </li>
+            <li>本アプリケーションを起動し、設定画面を開きます。</li>
+            <li>「VOICEVOX Engineの実行パス」といった項目に、上記で確認した<code>run.exe</code>のフルパスを貼り付けます。</li>
+            <li>音声エンジンとして「VOICEVOX」を選択して設定を保存し、アプリケーションを再起動します。</li>
+            <li>音声モデルの項目に候補が並んでいると思います。好きなキャラクターを設定して、再起動します。</li>
+        </ol>
+        <p>
+            これで、本アプリケーションを起動すると、VOICEVOX Engineがバックグラウンドで自動的に起動するようになります。
+        </p>
+
+        <div class="caution">
+            <h2><span style="color: #f00;">■</span> 注意事項</h2>
+            <ul>
+                <li>
+                    <strong>ファイアウォールによるブロック：</strong><br>
+                    初めて連携する際、Windows Defenderなどのファイアウォールが「セキュリティの重要な警告」を表示することがあります。これは、アプリケーションがVOICEVOXと通信するために必要な許可を求めているものです。<strong>「プライベートネットワーク」にチェックを入れ、「アクセスを許可する」</strong>をクリックしてください。
+                </li>
+                <li>
+                    <strong>PCのパフォーマンス：</strong><br>
+                    VOICEVOXはCPUパワーを必要とする場合があります。PCのスペックによっては、音声の生成に時間がかかったり、PC全体の動作が少し重くなったりする可能性があります。
+                </li>
+                <li>
+                    <strong>利用できるキャラクター：</strong><br>
+                    アプリケーション内で利用できる話者（キャラクター）は、お使いのVOICEVOXにインストールされている話者に依存します。
+                </li>
+            </ul>
+        </div>
+
+        <h2>トラブルシューティング</h2>
+        <p>音声が再生されない、エラーが出るなどの問題が発生した場合は、以下をご確認ください。</p>
+        <ul>
+            <li><strong>設定の確認：</strong>アプリケーションの設定で、音声エンジンが「VOICEVOX」に設定されていますか？</li>
+            <li><strong>VOICEVOXの起動状態（方法1の場合）：</strong>VOICEVOXは正常に起動していますか？一度VOICEVOXを再起動してから、アプリケーションを再起動してみてください。</li>
+            <li><strong>実行パスの確認（方法2の場合）：</strong>設定画面で指定した<code>run.exe</code>のパスは正しいですか？パスに誤りがないか、ファイルがその場所に存在するかを再度ご確認ください。</li>
+            <li><strong>ファイアウォールの設定：</strong>ファイアウォールで通信がブロックされていませんか？セキュリティソフトの設定をご確認ください。</li>
+        </ul>
+
+        <hr>
+        <p style="text-align: center;">
+            これで設定は完了です。キャラクターとの会話をお楽しみください！
+        </p>
+    </div>
+</body>
+</html>
