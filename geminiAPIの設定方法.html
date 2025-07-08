@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini APIキーの設定方法</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Meiryo, 'Yu Gothic', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+            background-color: #f9f9f9;
+        }
+        h1, h2, h3 {
+            color: #005a9c;
+            border-bottom: 2px solid #005a9c;
+            padding-bottom: 5px;
+        }
+        h1 {
+            text-align: center;
+            border-bottom: none;
+        }
+        p {
+            margin-bottom: 1em;
+        }
+        a {
+            color: #0078d4;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .step {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .code {
+            background-color: #eef;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid #ccd;
+        }
+        .warning {
+            background-color: #fffbe6;
+            border: 1px solid #ffe58f;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        ol {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        .image-placeholder {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            color: #777;
+            margin-top: 10px;
+            background-color: #fafafa;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Gemini APIキーの設定方法</h1>
+
+    <p>
+        このアプリケーションのAI会話機能を利用するには、Googleが提供する「Gemini API」のキーが必要です。
+        このドキュメントでは、APIキーを取得し、アプリケーションに設定するまでの手順を説明します。
+    </p>
+
+    <h2>ステップ1: Google AI StudioにアクセスしてAPIキーを取得する</h2>
+    <div class="step">
+        <ol>
+            <li>まず、Webブラウザで<strong><a href="https://aistudio.google.com/" target="_blank">Google AI Studio</a></strong>にアクセスします。（Googleアカウントでのログインが必要です。）</li>
+            <li>画面左側のメニューから「<strong>Get API key</strong>」をクリックします。</li>
+            <li>「<strong>Create API key in new project</strong>」ボタンをクリックして、新しいAPIキーを作成します。</li>
+            <li>
+                APIキー（長い文字列）が生成されたら、コピーボタンをクリックしてクリップボードにコピーします。
+                <br>
+                <div class="code">AIzaSy...（このような長い文字列です）</div>
+                <div class="warning">
+                    <strong>重要:</strong> このAPIキーは、他人に知られないように大切に保管してください。パスワードと同じように扱う必要があります。
+                </div>
+            </li>
+        </ol>
+    </div>
+
+    <h2>ステップ2: アプリケーションにAPIキーを設定する</h2>
+    <div class="step">
+        <ol>
+            <li>デスクトップキャラクターを右クリックして表示されるメニューから「<strong>設定</strong>」を選択し、設定ウィンドウを開きます。</li>
+            <li>設定ウィンドウ内の「<strong>ApplicationSettings</strong>」セクションを探します。</li>
+            <li>「<strong>geminiAPIkey:</strong>」という項目を見つけ、その右側にある入力欄に、先ほどコピーしたAPIキーを貼り付けます。</li>
+            <li>入力欄にキーを貼り付けたら、設定ウィンドウの下部にある「<strong>保存して閉じる</strong>」ボタンをクリックします。</li>
+        </ol>
+    </div>
+
+    <h2>設定完了</h2>
+    <p>以上で設定は完了です。AIとの会話機能が有効になります。</p>
+
+</body>
+</html>

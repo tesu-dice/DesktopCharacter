@@ -10,7 +10,7 @@ import sys
 現在のリリースバージョンの定義、
 githubのリリースを作成するときにおけるtagの部分。
 """
-CURRENT_APP_VERSION = "v0.0"#現在のバージョンの値、ここが最新と異なるかどうかをチェックする。
+CURRENT_APP_VERSION = "v0.0.1"#現在のバージョンの値、ここが最新と異なるかどうかをチェックする。
 
 #githubの所有者とリポジトリ名から最新リリースバージョンを取得する関数
 def get_latest_github_release_version(owner, repo):
@@ -34,7 +34,7 @@ def get_latest_github_release_version(owner, repo):
         return None
 
 #現在のバージョン情報が最新かどうかを確認して、true/false, 現在のver, 最新のverを返す関数
-def check_nowver_is_newestver(github_owner, github_repo):
+def check_nowver_is_newestver(github_owner, github_repo, current_version):
     """
     GitHubの最新リリースと現在のアプリケーションバージョンを比較し、更新の有無をチェックします。
     """
@@ -42,21 +42,21 @@ def check_nowver_is_newestver(github_owner, github_repo):
     latest_version = get_latest_github_release_version(github_owner, github_repo)
 
     if latest_version:
-        print(f"現在のバージョン: {CURRENT_APP_VERSION}")
+        print(f"現在のバージョン: {current_version}")
         print(f"GitHub上の最新バージョン: {latest_version}")
 
         # バージョン比較ロジック（簡易版）
         # より厳密なバージョン比較には、packaging.versionなどのライブラリを使用することを推奨します。
-        if latest_version > CURRENT_APP_VERSION:
+        if latest_version != current_version:
             print("新しいバージョンが利用可能です！")
             print(f"最新版をダウンロードしてください: https://github.com/{github_owner}/{github_repo}/releases/latest")
-            return False, latest_version, CURRENT_APP_VERSION
+            return False, latest_version, current_version
         else:
             print("お使いのバージョンは最新です。")
-            return True, latest_version, CURRENT_APP_VERSION
+            return True, latest_version, current_version
     else:
         print("最新のバージョン情報を取得できませんでした。")
-        return False, "取得失敗", CURRENT_APP_VERSION
+        return False, "取得失敗", current_version
 
 if __name__ == "__main__":
     # このスクリプトを直接実行した場合のテスト用
@@ -72,6 +72,6 @@ if __name__ == "__main__":
         print("pip install requests を実行してインストールしてください。", file=sys.stderr)
         sys.exit(1)
 
-    result = check_nowver_is_newestver(test_owner, test_repo)
+    result = check_nowver_is_newestver(test_owner, test_repo, CURRENT_APP_VERSION)
     print(f"チェック結果それぞれのタイプ:", type(result[0]), type(result[1]), type(result[2]))
     print(f"チェック結果: {result[0]}, 最新バージョン: {result[1]}, 現在のバージョン: {result[2]}")
