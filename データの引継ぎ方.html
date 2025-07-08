@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>データの引継ぎ方法</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Meiryo, 'Yu Gothic', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+            background-color: #f9f9f9;
+        }
+        h1, h2, h3 {
+            color: #005a9c;
+            border-bottom: 2px solid #005a9c;
+            padding-bottom: 5px;
+        }
+        h1 {
+            text-align: center;
+            border-bottom: none;
+        }
+        p {
+            margin-bottom: 1em;
+        }
+        .step {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .code {
+            background-color: #eef;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid #ccd;
+        }
+        .warning {
+            background-color: #fffbe6;
+            border: 1px solid #ffe58f;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        ol, ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>アプリケーションのデータ引継ぎ方法</h1>
+
+    <p>
+        新しいバージョンのアプリケーションをご利用いただきありがとうございます。<br>
+        このページでは、古いバージョンから新しいバージョンへ、AIのキャラクター設定や追加した立ち絵データを引き継ぐ方法について説明します。
+    </p>
+
+    <h2>引き継ぎ手順</h2>
+    <div class="step">
+        <p>以下の手順で、古いアプリケーションフォルダから新しいアプリケーションフォルダへデータをコピーしてください。</p>
+        <ol>
+            <li>
+                <strong>古いバージョンのフォルダを開きます。</strong>
+            </li>
+            <li>
+                <strong>新しいバージョンのフォルダを別のウィンドウで開きます。</strong>
+            </li>
+            <li>
+                <strong>キャラクター設定ファイルを引き継ぎます。</strong><br>
+                古いフォルダにある <span class="code">Character_setting.txt</span> ファイルをコピーし、新しいフォルダの同じ場所に貼り付けて上書きしてください。
+            </li>
+            <li>
+                <strong>ご自身で追加した立ち絵フォルダを引き継ぎます。</strong><br>
+                古いフォルダの中にある <span class="code">立ち絵</span> フォルダを開きます。その中から、ご自身で追加したキャラクター名のフォルダをコピーし、新しいフォルダの <span class="code">立ち絵</span> フォルダの中に貼り付けてください。
+            </li>
+        </ol>
+    </div>
+
+    <h2>【重要】引き継がれない設定について</h2>
+    <div class="warning">
+        <p>
+            <strong>ご注意ください：</strong><br>
+            キャラクターの大きさ、フォントサイズ、ウィンドウの位置といったアプリケーション自体の設定（<span class="code">config.json</span> に保存されています）は、現在のバージョンでは引き継ぐことができません。
+        </p>
+        <p>
+            お手数をおかけしますが、アプリケーションを起動後、右クリックメニューの「設定」から再度設定をお願いいたします。
+        </p>
+    </div>
+
+    <h2>引継ぎ完了</h2>
+    <p>以上でデータの引継ぎは完了です。新しいバージョンのアプリケーションをお楽しみください。</p>
+
+</body>
+</html>
