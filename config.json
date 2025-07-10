@@ -11,7 +11,7 @@
       "CharacterFolder": {
         "name": "キャラクターの立ち絵",
         "type": "choice",
-        "value": "CHARAT-MONO"
+        "value": "あいえるたん_SD"
       },
       "CharacterSize": {
         "name": "キャラクターサイズ",
@@ -21,7 +21,7 @@
       "FontSize": {
         "name": "文字サイズ",
         "type": "int",
-        "value": 12
+        "value": 10
       },
       "ActiveSpeak": {
         "name": "自発的な会話",
@@ -35,7 +35,7 @@
           "Time": {
             "name": "会話の頻度（毎秒）",
             "type": "int",
-            "value": 300
+            "value": 102
           }
         }
       },
@@ -55,7 +55,16 @@
           }
         }
       }
-    }
+    },
+    "ActiveSpeak": {
+      "on/off": true,
+      "Time": 100
+    },
+    "Permisson": {
+      "ActiveWindow": true,
+      "PlayingMedia": true
+    },
+    "FontSize": 20
   },
   "VoiceSettings": {
     "name": "音声設定",
@@ -90,7 +99,7 @@
           "path": {
             "type": "path",
             "name": "VOICEVOXの起動パス",
-            "value": "C:/Users/owner/AppData/Local/Programs/VOICEVOX/vv-engine/run.exe"
+            "value": "C:/Program Files/VOICEVOX/vv-engine/run.exe"
           },
           "usegpu": {
             "type": "bool",
@@ -110,6 +119,10 @@
           }
         }
       }
+    },
+    "VOICEVOX": {
+      "usegpu": true,
+      "autorun": true
     }
   }
 }
