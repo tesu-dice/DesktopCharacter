@@ -24,9 +24,10 @@ from config_controller import UserSettings
 class geminiAI():
         #初期化
         def __init__(self, usersetting:UserSettings, ui, debug = -1):
-            self.usersetting = usersetting
             self.ui = ui
-            yourAPIkey = self.usersetting.get_setting_value("ApplicationSettings.geminiAPIkey")#APIkeyの設定
+            self.usersetting = usersetting
+
+            yourAPIkey = usersetting.get_setting_value("ApplicationSettings.geminiAPIkey")#APIkeyの設定
             if debug >= 0:
                 indent = "  " * debug
                 print(f"{indent}geminiAPI.__init__() called.")
@@ -47,16 +48,15 @@ class geminiAI():
                             "期待.png：今日も一日頑張りましょう。\n"\
                             "###立ち絵ファイル名\n"
             
-            base_prompt += self.load_imgs()+"\n#キャラクター設定\n"
+            base_prompt += self.load_imgs(dir_name=usersetting.get_setting_value("ApplicationSettings.CharacterFolder"))+"\n#キャラクター設定\n"
             f= open("Character_setting.txt", encoding="utf-8")
-            setting=""
+            Character_set_text=""
             for line in f:
                 line.strip("\n")
-                setting +=line
-            setting
+                Character_set_text +=line
+            
             f.close()
-            # print(setting)
-            # input()
+        
 
             
 
@@ -91,12 +91,12 @@ class geminiAI():
                                         generation_config= generation_config,
                                         safety_settings=safety_settings)
 
-            self.history = [{"role": "user", "parts":[base_prompt + setting]}, {"role": "model", "parts":["了解しました。"]}]
+            self.history = [{"role": "user", "parts":[base_prompt + Character_set_text]}, {"role": "model", "parts":["了解しました。"]}]
             
         #キャラクター画像を読み込み、AIへ指示書として返す。
-        def load_imgs(self):
+        def load_imgs(self, dir_name):
             import os
-            dir_path = f"立ち絵/{self.usersetting.get_setting_value('ApplicationSettings.CharacterFolder')}/"
+            dir_path = f"立ち絵/{dir_name}"
             files = os.listdir(dir_path)
             text = str(files)
             return text
@@ -112,6 +112,15 @@ class geminiAI():
         
         #入力文字列をAIに送信、返答を返す。
         def response(self, input_text, debug=-1):
+            if debug >= 0:
+                indent = "  " * debug
+                print(f"{indent}geminiAPI.py response() was called.",input_text)
+                if(input_text == "histroy"):
+                    self.view_conversation_log()
+                
+                print(f"{indent}self.history = {self.history}")
+                debug = debug + 1
+
             input_content = [{"role": "user", "parts":[input_text]}]
             #送信するコンテンツの選別
             if len(self.history) > 7:

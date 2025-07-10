@@ -37,14 +37,23 @@ class ContextMenuManager:
         self.menu.post(event.x_root, event.y_root)
 
     def show_textFrame(self):
-        self.ui.talk_window.deiconify()
+        if self.ui.talk_window == None:
+            self.ui.talk_window = UI_talk.TalkWindow(self.ui, self.app, self.ui.setting,  debug=self.ui.debug)
+        else:
+            #アクティブウィンドウをself.ui.talk_windowsにする。
+            self.ui.talk_window.deiconify()
+            self.ui.talk_window.focus_force()
         
     def show_settingUI(self):
-        self.ui.setting_window.deiconify()
+        if self.ui.setting_window == None:
+            self.ui.setting_window = UI_settings.UI(self, self.setting)
+        else:
+            self.ui.setting_window.deiconify()
+            self.ui.setting_window.focus_force()
 
     #appの再起動
     def reboot_app(self):
-        self.app.reboot_app()
+        self.app.reboot_app(self.ui.debug)
 
 
     def exit_app(self):
@@ -64,6 +73,8 @@ class UI(tk.Tk):
             print(f"{indent}UI.py __init__() called.")
             UI.show_message_box("デバックメッセージ", "UI_main.py show_message_box()の動作確認です。")
             debug = debug + 1 if debug >= 0 else -1
+            self.debug = debug
+
         self.app = app
         self.setting = setting
 

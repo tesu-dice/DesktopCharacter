@@ -38,7 +38,6 @@ class myapp():
             print("コンフィグファイルの読み込みに失敗しました。")
         #VOICEVOXEngineの起動
         self.engine_prosess = engine_prosess
-        
         if  self.engine_prosess == None and \
             self.setting.get_setting_value("VoiceSettings.engine") == "VOICEVOX" and \
             self.setting.get_setting_value("VoiceSettings.VOICEVOX.autorun") == True and \
@@ -55,9 +54,9 @@ class myapp():
         self.ui.after(500, self.update)
         start_app(self)
     #アプリケーションの再起動
-    def reboot_app(self):
+    def reboot_app(self, debug = -1):
         self.ui.destroy()
-        self.__init__(engine_prosess=self.engine_prosess)
+        self.__init__(engine_prosess=self.engine_prosess, debug=debug)
         start_app(app = self)
 
 
@@ -80,6 +79,7 @@ class myapp():
 
     #状態監視の実行
     def update(self, debug = -1):
+        print(self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.Time"))
         if debug >= 0:
             indent = "  " * debug
             print(f"{indent}main.py update() called. activespeak={self.setting.get_setting_value('ApplicationSettings.ActiveSpeak.on/off')}")
