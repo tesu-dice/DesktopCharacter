@@ -4,6 +4,8 @@
     "CharacterFolder": "あいえるたん_SD",
     "CharacterSize": 500,
     "FontSize": 13,
+    "ImgFlip": false,
+    "AlwaysOnTop": true,
     "ActiveSpeak": {
       "on/off": true,
       "Time": 300

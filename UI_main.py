@@ -57,8 +57,8 @@ class ContextMenuManager:
 
 
     def exit_app(self):
-        if self.app.engine_prosess is not None:
-            kill_server(self.app.engine_prosess)
+        if self.app.engine_process is not None:
+            kill_server(self.app.engine_process)
         self.ui.destroy()
 
 
@@ -102,7 +102,8 @@ class UI(tk.Tk):
         self.setting_window = UI_settings.UI(self, self.setting); self.setting_window.withdraw()
         # メインウィンドウの設定
         self.title("デスクトップキャラクター")
-        self.attributes("-topmost", True)
+        if self.setting.get_setting_value("ApplicationSettings.AlwaysOnTop"):
+            self.attributes("-topmost", True)
         self.overrideredirect(True) # ウィンドウのタイトルバーなどを非表示
         self.trans_color = "#888888"
         self.config(background=self.trans_color)

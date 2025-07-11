@@ -13,7 +13,7 @@ import os
 from PIL import Image, ImageTk  # 画像表示のため
 import tkinter as tk
 import random
-
+from PIL.Image import FLIP_LEFT_RIGHT 
 #プログラムのインポート
 from config_controller import UserSettings
 from WindowsInfoCollecter import get_TotalMonitorSize
@@ -39,6 +39,9 @@ class charaimg_controller():
             image = Image.open(dir_path + f)  # 画像ファイル名を指定
             # 画像サイズを調整 (必要に応じて)
             image = image.resize((int(image.width *(self.win_h / image.height)), int(image.height *(self.win_h / image.height)) ))
+            #画像の左右反転
+            if self.setting.get_setting_value("ApplicationSettings.ImgFlip"):
+                image = image.transpose(FLIP_LEFT_RIGHT)
             image = ImageTk.PhotoImage(image)
             
             self.imgs[f] = image
