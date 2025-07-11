@@ -1,8 +1,3 @@
-"""
-config.json ファイルを読み書きしてアプリケーション設定を管理します。
-設定は UserSettings クラスを介して保存およびアクセスされ、個々の設定は
-SettingItem オブジェクトとして表現されます。
-"""
 import json
 import os
 from typing import Any, Dict, List, Optional, Union
@@ -24,15 +19,15 @@ class SettingItem:
 
         Args:
             name: 項目の名前
-            path: 設定へのドット区切りパス (例: "audioSettings.windowsNarrator.voiceModel")。
-            value: 設定の現在の値。
-            item_type: 設定の型 ("choice", "integer", "string", "boolean", "object")。
-            raw_item_data: この設定項目に対応する元のJSONノードのデータ。
-            description: 設定の人間可読な説明 (JSON の "name" フィールドから)。
-            options: 利用可能な選択肢のリスト ("choice" 型の場合)。
-            value_range: min/max 制約を指定する辞書。
-                         "integer" の場合: {"min": int, "max": int}。
-                         "object" の場合: {"min": dict, "max": dict} (サブプロパティの制約)。
+            path: 設定へのドット区切りパス (例: "audioSettings.windowsNarrator.voiceModel").
+            value: 設定の現在の値.
+            item_type: 設定の型 ("choice", "integer", "string", "boolean", "object").
+            raw_item_data: この設定項目に対応する元のJSONノードのデータ.
+            description: 設定の人間可読な説明 (JSON の "name" フィールドから).
+            options: 利用可能な選択肢のリスト ("choice" 型の場合).
+            value_range: min/max 制約を指定する辞書.
+                         "integer" の場合: {"min": int, "max": int}.
+                         "object" の場合: {"min": dict, "max": dict} (サブプロパティの制約).
         """
         self.name: str = name
         self.path: str = path
@@ -113,6 +108,30 @@ class UserSettings:
             if isinstance(sub_node, dict):
                 self._populate_settings_map(sub_node, current_path_parts + [key])
 
+    def _populate_settings_map_with_merge(self, source_node: Dict[str, Any], current_path_parts: List[str]):
+        """
+        新しいJSONデータからノードを再帰的に解析し、既存の_settings_mapをマージ（上書き）します。
+        このメソッドは_raw_config_dataの対応する'value'も更新します。
+        """
+        for key, sub_node in source_node.items():
+            new_path_parts = current_path_parts + [key]
+            path_str = ".".join(new_path_parts)
+
+            if isinstance(sub_node, dict):
+                # source_nodeがセクションまたは中間的な辞書の場合
+                # ただし、デフォルト設定には存在しない新しいセクションや項目が
+                # config.json にある場合は、ここでは処理しない
+                # 既存のパスのみを更新するため、set_setting_valueを使用する
+                if "value" in sub_node:
+                    # これは設定項目なので、値を設定
+                    self.set_setting_value(path_str, sub_node["value"])
+                else:
+                    # セクションまたは中間辞書なので、再帰的に処理
+                    self._populate_settings_map_with_merge(sub_node, new_path_parts)
+            else:
+                # これは設定項目（値そのもの）なので、set_setting_valueを使用
+                self.set_setting_value(path_str, sub_node)
+
     def load_from_dict(self, config_data: Dict[str, Any]):
         """辞書 (解析された JSON) から設定をロードします。"""
         self._raw_config_data = config_data.copy() # ロードしたJSONデータをコピーして保持
@@ -131,7 +150,7 @@ class UserSettings:
         """
         item = self._settings_map.get(path) # SettingItem オブジェクトを取得
         if not item:
-            print(f"警告: パス '{path}' の設定が見つかりません。")
+            # print(f"警告: パス '{path}' の設定が見つかりません。") # デバッグ用、マージ時にはスキップしたい場合がある
             return False
 
         # 基本的な型と制約の検証
@@ -189,41 +208,49 @@ class UserSettings:
         """パスによって完全な SettingItem オブジェクトを取得します。"""
         return self._settings_map.get(path)
 
-    def to_dict_for_save(self) -> Dict[str, Any]:
-        """すべての設定を JSON 保存のためにネストされた辞書構造に変換し直します。"""
-        output_root = {}
-        # sorted_paths = sorted(self._settings_map.keys()) # 一貫した出力順序のためにソート
-
-        for path in self._settings_map.keys(): # 元の順序を維持するためにソートしない
-            item = self._settings_map[path]
-            # item.raw_item_data は _raw_config_data 内の実際のノードへの参照なので、
-            # set_setting_value で既に更新されている。
-            # そのため、_raw_config_data をそのまま返せばよい。
-        return self._raw_config_data # _raw_config_data をそのまま返す
-
-    def __repr__(self) -> str:
-        items_repr = "\n".join(f"  {path}: {item!r}" for path, item in self._settings_map.items())
-        return f"UserSettings(\n{items_repr}\n)"
-
+    def to_dict_for_save_simple(self) -> Dict[str, Any]:
+        """
+        すべての設定をパスと値のみのネストされた辞書構造に変換し直します。
+        """
+        output_data = {}
+        for path, item in self._settings_map.items():
+            parts = path.split('.')
+            current_level = output_data
+            for i, part in enumerate(parts):
+                if i == len(parts) - 1:
+                    # 最後のパートは値
+                    current_level[part] = item.value
+                else:
+                    # 途中は辞書
+                    if part not in current_level:
+                        current_level[part] = {}
+                    current_level = current_level[part]
+        return output_data
 
 def read_configfile(filepath: str = "config.json") -> UserSettings:
     """
     JSON ファイルから設定を読み込み、UserSettings インスタンスを返します。
     """
+    #設定データの初期化
     settings = UserSettings()
+    default_data = get_default_data()
+    settings.load_from_dict(default_data) # まずデフォルトデータをロード
+
+    #設定ファイルを参照して値を変更
     try:
         with open(filepath, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        # print(data.keys())
-        # print(data.values())
-        # print(data.items())
-        settings.load_from_dict(data)
+            config_file_data = json.load(f)
+        
+        # config.json の内容を既存の設定にマージする
+        # recursive_update_settingsのようなヘルパー関数を使用して、config_file_dataをsettingsに適用する
+        settings._populate_settings_map_with_merge(config_file_data, [])
+
     except FileNotFoundError:
-        print(f"情報: 設定ファイル '{filepath}' が見つかりません。空の設定で初期化します。")
+        print(f"情報: 設定ファイル '{filepath}' が見つかりません。デフォルト設定を使用します。")
     except json.JSONDecodeError as e:
-        print(f"エラー: '{filepath}' から JSON をデコードできませんでした。{e}。空の設定で初期化します。")
+        print(f"エラー: '{filepath}' から JSON をデコードできませんでした。{e}。デフォルト設定を使用します。")
     except Exception as e:
-        print(f"エラー: '{filepath}' の読み込み中に予期しないエラーが発生しました。{e}。空の設定で初期化します。")
+        print(f"エラー: '{filepath}' の読み込み中に予期しないエラーが発生しました。{e}。デフォルト設定を使用します。")
     return settings
 
 
@@ -232,7 +259,7 @@ def write_configfile(usersettings: UserSettings, filepath: str = "config.json"):
     UserSettings インスタンスから現在の設定を JSON ファイルに書き込みます。
     """
     try:
-        data_to_save = usersettings.to_dict_for_save()
+        data_to_save = usersettings.to_dict_for_save_simple()
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data_to_save, f, ensure_ascii=False, indent=2) # indent=2 で整形
         print(f"情報: 設定が '{filepath}' に正常に書き込まれました。")
@@ -240,6 +267,201 @@ def write_configfile(usersettings: UserSettings, filepath: str = "config.json"):
         print(f"エラー: '{filepath}' への書き込み中に予期しないエラーが発生しました。{e}")
 
 
+def get_default_data() -> Dict[str, Any]:
+    """
+    origin_config.json を読み取った時と同じような形になるような
+    デフォルトのJSON設定データを返します。
+    """
+    default_config = {
+        "ApplicationSettings": {
+            "name": "アプリケーション設定",
+            "type": "section",
+            "children": {
+                "geminiAPIkey": {
+                    "name": "geminiAPIkey",
+                    "type": "str",
+                    "value": ""
+                },
+                "CharacterFolder": {
+                    "name": "キャラクターの立ち絵",
+                    "type": "choice",
+                    "value": "CHARAT-MONO"
+                },
+                "CharacterSize": {
+                    "name": "キャラクターサイズ",
+                    "type": "int",
+                    "value": 500
+                },
+                "FontSize": {
+                    "name": "文字サイズ",
+                    "type": "int",
+                    "value": 10
+                },
+                "ActiveSpeak": {
+                    "name": "自発的な会話",
+                    "type": "section",
+                    "children": {
+                        "on/off": {
+                            "name": "自発的な会話のon/off",
+                            "type": "bool",
+                            "value": True
+                        },
+                        "Time": {
+                            "name": "会話の頻度（毎秒）",
+                            "type": "int",
+                            "value": 102
+                        }
+                    }
+                },
+                "Permisson": {
+                    "name": "アプリでの利用を許可する項目",
+                    "type": "section",
+                    "children": {
+                        "ActiveWindow": {
+                            "name": "作業中のウィンドウ",
+                            "type": "bool",
+                            "value": True
+                        },
+                        "PlayingMedia": {
+                            "name": "再生中のメディア",
+                            "type": "bool",
+                            "value": True
+                        }
+                    }
+                }
+            },
+            "ActiveSpeak": {
+                "on/off": True,
+                "Time": 100
+            },
+            "Permisson": {
+                "ActiveWindow": True,
+                "PlayingMedia": True
+            },
+            "FontSize": 20
+        },
+        "VoiceSettings": {
+            "name": "音声設定",
+            "type": "section",
+            "children": {
+                "engine": {
+                    "name": "音声合成エンジン",
+                    "type": "choice",
+                    "value": "VOICEVOX",
+                    "options": [
+                        "None",
+                        "WindowsNarrator",
+                        "VOICEVOX"
+                    ]
+                },
+                "windowsNarrator": {
+                    "name": "Windows Narrator 設定",
+                    "type": "section",
+                    "children": {
+                        "Model": {
+                            "name": "音声モデル",
+                            "type": "choice",
+                            "value": "Microsoft Sayaka - Japanese (Japan)",
+                            "options": []
+                        }
+                    }
+                },
+                "VOICEVOX": {
+                    "name": "VOICEVOX 設定",
+                    "type": "section",
+                    "children": {
+                        "path": {
+                            "type": "path",
+                            "name": "VOICEVOXの起動パス",
+                            "value": "C:/Program Files/VOICEVOX/vv-engine/run.exe"
+                        },
+                        "usegpu": {
+                            "type": "bool",
+                            "name": "音声合成にGPUを使用",
+                            "value": True
+                        },
+                        "autorun": {
+                            "type": "bool",
+                            "name": "アプリ起動時にエンジンを自動で起動",
+                            "value": True
+                        },
+                        "Model": {
+                            "type": "choice",
+                            "name": "音声モデル",
+                            "value": "未設定",
+                            "options": []
+                        }
+                    }
+                }
+            },
+            "VOICEVOX": {
+                "usegpu": True,
+                "autorun": True
+            }
+        }
+    }
+    return default_config
+
+
 if __name__ == '__main__':
-    import main
-    main.start_app()
+    # このブロックは、config_controller.py のオリジナルの __main__ ブロックを置き換えます。
+    # main モジュールが存在しないため、ここでは代わりに get_default_data 関数をテストします。
+
+    # get_default_data 関数を呼び出してデフォルト設定を取得
+    default_settings_data = get_default_data()
+    print("Default configuration data generated by get_default_data():")
+    print(json.dumps(default_settings_data, indent=2, ensure_ascii=False))
+
+    # UserSettings クラスを使用してデフォルトデータをロードし、SettingItem を確認する例
+    settings_manager = UserSettings()
+    settings_manager.load_from_dict(default_settings_data)
+
+    print("\n--- Testing UserSettings with default data ---")
+    
+    # いくつかの設定値を取得
+    gemini_key = settings_manager.get_setting_value("ApplicationSettings.geminiAPIkey")
+    print(f"ApplicationSettings.geminiAPIkey: {gemini_key}") # 期待値: ""
+
+    font_size = settings_manager.get_setting_value("ApplicationSettings.FontSize")
+    print(f"ApplicationSettings.FontSize: {font_size}") # 期待値: 10
+
+    active_speak_on_off = settings_manager.get_setting_value("ApplicationSettings.ActiveSpeak.on/off")
+    print(f"ApplicationSettings.ActiveSpeak.on/off: {active_speak_on_off}") # 期待値: True
+
+    voicevox_engine = settings_manager.get_setting_value("VoiceSettings.engine")
+    print(f"VoiceSettings.engine: {voicevox_engine}") # 期待値: "VOICEVOX"
+
+    # 設定値を変更
+    print("\n--- Changing a setting value ---")
+    success = settings_manager.set_setting_value("ApplicationSettings.FontSize", 16)
+    print(f"Set ApplicationSettings.FontSize to 16: {success}")
+    print(f"New ApplicationSettings.FontSize: {settings_manager.get_setting_value('ApplicationSettings.FontSize')}") # 期待値: 16
+
+    # 存在しないパスを設定しようとする
+    print("\n--- Trying to set a non-existent path ---")
+    success_non_existent = settings_manager.set_setting_value("NonExistent.Path.Value", "test")
+    print(f"Set NonExistent.Path.Value: {success_non_existent}") # 期待値: False
+
+    # 型が異なる値を設定しようとする（intのところにstr）
+    print("\n--- Trying to set a wrong type value ---")
+    success_wrong_type = settings_manager.set_setting_value("ApplicationSettings.CharacterSize", "large")
+    print(f"Set ApplicationSettings.CharacterSize to 'large': {success_wrong_type}") # 期待値: False
+
+    # 変更されたデータ構造を JSON に変換して表示
+    print("\n--- Data structure after modifications (for save) ---")
+    modified_data_for_save = settings_manager.to_dict_for_save_simple()
+    print(json.dumps(modified_data_for_save, indent=2, ensure_ascii=False))
+
+    # read_configfile の新しいロジックをテスト
+    print("\n--- Testing read_configfile with merge logic ---")
+    loaded_settings = read_configfile("config.json")
+
+    print(f"Loaded ApplicationSettings.geminiAPIkey: {loaded_settings.get_setting_value('ApplicationSettings.geminiAPIkey')}")
+    print(f"Loaded ApplicationSettings.CharacterFolder: {loaded_settings.get_setting_value('ApplicationSettings.CharacterFolder')}")
+    print(f"Loaded ApplicationSettings.FontSize: {loaded_settings.get_setting_value('ApplicationSettings.FontSize')}")
+    print(f"Loaded VoiceSettings.VOICEVOX.Model: {loaded_settings.get_setting_value('VoiceSettings.VOICEVOX.Model')}")
+
+    # このコメントアウトされた行は、元の main.start_app() を呼び出します。
+    # if main が存在しない環境でこのスクリプトを実行するとエラーになるため、コメントアウトしています。
+    # import main
+    # main.start_app()

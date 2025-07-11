@@ -23,11 +23,11 @@ def start_server(path, usegpu:bool, debug = -1):
         debug = debug + 1 if debug >= 0 else -1
 
     try:
-        result = None
         result = subprocess.Popen(path)
     except Exception as e:
         print("VoiceVoxEngineの実行に失敗しました。")
         print(e)
+        return False
     return result
 
 def kill_server(process):

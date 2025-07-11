@@ -68,12 +68,14 @@ class ContextMenuManager:
 class UI(tk.Tk):
     def __init__(self, app, setting:UserSettings, debug =-1):
         super().__init__()
+        #デバックの処理
+        self.debug = debug
         if debug >= 0:
             indent = "  " * debug
             print(f"{indent}UI.py __init__() called.")
-            UI.show_message_box("デバックメッセージ", "UI_main.py show_message_box()の動作確認です。")
+            UI.show_message_box("info", "デバックメッセージ", "UI_main.py show_message_box()の動作確認です。")
             debug = debug + 1 if debug >= 0 else -1
-            self.debug = debug
+            
 
         self.app = app
         self.setting = setting
@@ -157,9 +159,16 @@ class UI(tk.Tk):
             new_y = self.drag_item.winfo_y() + (event.y - self.start_y)
             self.drag_item.place(x=new_x, y=new_y)
 
-
-    def show_message_box(title:str, message:str)->bool:
-        return messagebox.askyesno(title, message)
+    @staticmethod
+    def show_message_box(type, title:str, message:str)->bool:
+        if type == "info":
+            return messagebox.showinfo(title, message)
+        elif type == "warning":
+            return messagebox.showwarning(title, message)
+        elif type == "error":
+            return messagebox.showerror(title, message)
+        elif type == "question":
+            return messagebox.askyesno(title, message)
 
 
 

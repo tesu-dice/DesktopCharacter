@@ -14,7 +14,9 @@ from release_check import check_nowver_is_newestver, CURRENT_APP_VERSION
 
 
 class myapp():
-    def __init__(self, engine_prosess = None, debug = -1):
+    def __init__(self, engine_process = None, debug = -1):
+        #起動メッセージの初期化
+        _start_info_texts =""
         #デバックフラグの管理
         if debug > -1:
             indent = "  " * debug
@@ -29,7 +31,7 @@ class myapp():
             print("最新版をダウンロードしてください")
         else :
             print(f"お使いのバージョンは最新です。 最新バージョン: {_result[1]}, 現在のバージョン: {_result[2]}")
-             
+        _start_info_texts += f"---バージョン情報---:\n{'最新です。' if _result[0] else '更新があります。'} ({_result[1]}->{_result[2]})\n\n"
             
             
         #ユーザで他の読み込み
@@ -37,13 +39,14 @@ class myapp():
         if self.setting is None:
             print("コンフィグファイルの読み込みに失敗しました。")
         #VOICEVOXEngineの起動
-        self.engine_prosess = engine_prosess
-        if  self.engine_prosess == None and \
+        self.engine_process = engine_process
+        if  self.engine_process == None and \
             self.setting.get_setting_value("VoiceSettings.engine") == "VOICEVOX" and \
             self.setting.get_setting_value("VoiceSettings.VOICEVOX.autorun") == True and \
             self.setting.get_setting_value("VoiceSettings.VOICEVOX.path") != "":
-            print("VOICEVOXEngine起動")
-            self.engine_prosess = start_server(self.setting.get_setting_value("VoiceSettings.VOICEVOX.path"), self.setting.get_setting_value("VoiceSettings.VOICEVOX.usegpu"),debug=debug)
+            
+            self.engine_process = start_server(self.setting.get_setting_value("VoiceSettings.VOICEVOX.path"), self.setting.get_setting_value("VoiceSettings.VOICEVOX.usegpu"),debug=debug)
+            _start_info_texts += f"---VOICEVOXエンジンの起動---\n{('成功' if self.engine_process != False else '失敗')}\n\n"
         #各要素の起動
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.setting, debug=debug)
         self.ui = UI_main.UI(self, self.setting, debug=debug)
@@ -52,11 +55,12 @@ class myapp():
 
         
         self.ui.after(500, self.update)
+        self.ui.show_message_box("info", "DesktopCharacter起動メッセージ", str(_start_info_texts))
         start_app(self)
     #アプリケーションの再起動
     def reboot_app(self, debug = -1):
         self.ui.destroy()
-        self.__init__(engine_prosess=self.engine_prosess, debug=debug)
+        self.__init__(engine_process=self.engine_process, debug=debug)
         start_app(app = self)
 
 
