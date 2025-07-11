@@ -34,7 +34,6 @@ class UI(tk.Toplevel):
             settings (config_controller.UserSettings): アプリケーション全体の設定を管理するオブジェクト。
                                                       このオブジェクトを通して設定値の取得と更新を行います。
         """
-        # TkinterのToplevelウィジェットとして初期化（独立したサブウィンドウを作成）
         super().__init__(ui)
         self.title("設定")  # ウィンドウのタイトルを設定
         self.geometry("500x600")  # ウィンドウの初期サイズを設定
@@ -43,9 +42,6 @@ class UI(tk.Toplevel):
 
         # ★変更点1: 一時的な設定データは不要になるため削除。代わりに、ウィジェットのVarを保持する辞書を初期化★
         self._widget_vars: dict[str, tk.Variable] = {} # {full_path: tk.Variable_instance}
-
-        # 削除ボタンの上書き（WM_DELETE_WINDOW プロトコルを上書き）
-        self.protocol("WM_DELETE_WINDOW", self.withdraw) 
 
         # --- 設定表示領域のためのフレームとスクロールバー付きのキャンバスの配置 ---
         # メインフレーム: ウィンドウ全体に広がり、CanvasとScrollbarを格納

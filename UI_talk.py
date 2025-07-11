@@ -21,10 +21,7 @@ class TalkWindow(tk.Toplevel):
         self.master_controller = master_controller
         self.setting = setting
 
-        # 削除ボタンの上書き（WM_DELETE_WINDOW プロトコルを上書き）
-        self.protocol("WM_DELETE_WINDOW", self.withdraw) 
-
-
+        
 
         # フレームとスクロールバー付きのキャンバスの配置 (UI_settings.py と同様の構造)
         main_frame = tk.Frame(self)
