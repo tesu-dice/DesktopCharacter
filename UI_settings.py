@@ -41,9 +41,8 @@ class UI(tk.Toplevel):
         self.settings = settings  # UserSettingsオブジェクトをインスタンス変数として保持
         self.parent_ui = ui # 親UIへの参照を保持
 
-        # ★変更点1: 一時的な設定データ保持用辞書を初期化★
-        # self.settings._raw_config_data のディープコピーを作成し、一時的な変更はこのコピーに対して行う
-        self._temp_settings_data = copy.deepcopy(self.settings._raw_config_data)
+        # ★変更点1: 一時的な設定データは不要になるため削除。代わりに、ウィジェットのVarを保持する辞書を初期化★
+        self._widget_vars: dict[str, tk.Variable] = {} # {full_path: tk.Variable_instance}
 
         # 削除ボタンの上書き（WM_DELETE_WINDOW プロトコルを上書き）
         self.protocol("WM_DELETE_WINDOW", self.withdraw) 
@@ -75,7 +74,6 @@ class UI(tk.Toplevel):
         self.canvas.bind("<Configure>", self._on_canvas_configure)
 
         # --- 設定UIの再帰的な生成を開始 ---
-        # ★変更点2: UIの初期表示は、元の設定データ(self.settings._raw_config_data)を使用する★
         self.create_setting_ui_recursive()
 
         # --- 保存ボタンの配置 ---
@@ -103,26 +101,8 @@ class UI(tk.Toplevel):
         設定UIの再帰的な構築を開始する初期メソッドです。
         """
         self.scrollable_frame.columnconfigure(0, weight=1)
+        # UI表示はself.settings._raw_config_dataから開始
         self.add_settings_to_frame(self.scrollable_frame, self.settings._raw_config_data, [])
-
-    # ★追加関数: 一時データ (_temp_settings_data) を更新するヘルパー関数★
-    def _update_temp_setting_value(self, full_path, value):
-        """
-        指定されたパスの一時的な設定値を更新します。
-        """
-        parts = full_path.split('.')
-        current_node = self._temp_settings_data
-        for part in parts[:-1]:
-            current_node = current_node.setdefault(part, {}) # 存在しない場合は作成
-        
-        last_part = parts[-1]
-        
-        # 最終ノードに到達したら値を更新
-        # 設定が {"key": {"value": X, ...}} の形式か、{"key": X} の形式かを判断
-        if isinstance(current_node.get(last_part), dict) and "value" in current_node[last_part]:
-            current_node[last_part]['value'] = value
-        else:
-            current_node[last_part] = value
 
     def _create_widget_for_item(self, parent_widget_frame, item_obj: config_controller.SettingItem, full_path: str, display_key: str):
         """
@@ -139,7 +119,6 @@ class UI(tk.Toplevel):
         # 設定項目の説明またはキーをラベルとして表示
         ttk.Label(parent_widget_frame, text=f"{display_key}:").grid(row=0, column=0, sticky="w", padx=5)
 
-        # ★変更点3: ウィジェットの初期値はitem_obj.valueから取得する★
         initial_value = item_obj.value
 
         # --- 各種設定項目のタイプに応じたウィジェットの作成 ---
@@ -155,55 +134,41 @@ class UI(tk.Toplevel):
                 item_obj.options = talk_WindowsNarratorManager.get_SAPIVoice_names()
             combobox = ttk.Combobox(parent_widget_frame, textvariable=var, values=item_obj.options, state="readonly")
             combobox.grid(row=0, column=1, sticky="ew", padx=5)
-            # ★変更点4: StringVarの変更を検知し、一時データを更新する★
-            var.trace_add("write", lambda *args, p=full_path, v=var: self._update_temp_setting_value(p, v.get()))
+            # ★変更点: Comboboxの選択に対する trace_add を削除。値は保存時に取得する。
+            self._widget_vars[full_path] = var # 変数を保存
 
         elif item_obj.item_type == "int":
             # 整数値の入力フィールド
             var = tk.StringVar(value=str(initial_value)) # 現在の値を文字列としてStringVarにセット
             entry = ttk.Entry(parent_widget_frame, textvariable=var)
             entry.grid(row=0, column=1, sticky="ew", padx=5)
-            # 入力値のバリデーションと一時データ更新を行うローカル関数
-            def validate_and_set_int_local(p_path, str_var):
-                try:
-                    val = int(str_var.get()) # 入力値を整数に変換
-                    min_val = item_obj.value_range.get("min") # 最小値を取得
-                    max_val = item_obj.value_range.get("max") # 最大値を取得
-                    # 範囲チェックと値のクランプ（範囲外なら最小値/最大値に調整）
-                    if min_val is not None and val < min_val: str_var.set(str(min_val)); val = min_val
-                    elif max_val is not None and val > max_val: str_var.set(str(max_val)); val = max_val
-                    # ★変更点5: UserSettingsではなく一時データを更新★
-                    self._update_temp_setting_value(p_path, val) 
-                except ValueError:
-                    # 無効な入力（数値でない場合）は、設定オブジェクトの現在の値に戻す
-                    # ここでは一時データの値に戻す
-                    current_val_in_temp = self._get_setting_value_from_temp(p_path)
-                    if current_val_in_temp is not None: str_var.set(str(current_val_in_temp))
-            # StringVarの変更を検知し、バリデーション関数を呼び出す
-            var.trace_add("write", lambda *args, p=full_path, v=var: validate_and_set_int_local(p,v))
+            # ★変更点: trace_add や FocusOut イベントバインディングを削除。保存時に値を取得し、バリデーションを行う。
+            self._widget_vars[full_path] = var # 変数を保存
 
         elif item_obj.item_type == "str":
             # 文字列の入力フィールド
             var = tk.StringVar(value=initial_value)
             entry = ttk.Entry(parent_widget_frame, textvariable=var)
             entry.grid(row=0, column=1, sticky="ew", padx=5)
-            # ★変更点6: StringVarの変更を検知し、一時データを更新する★
-            var.trace_add("write", lambda *args, p=full_path, v=var: self._update_temp_setting_value(p, v.get()))
+            # ★変更点: trace_add や FocusOut イベントバインディングを削除。保存時に値を取得する。
+            self._widget_vars[full_path] = var # 変数を保存
 
         elif item_obj.item_type == "bool":
             # 真偽値（オン/オフ）のチェックボタン
             var = tk.BooleanVar(value=initial_value)
             checkbutton = ttk.Checkbutton(parent_widget_frame, variable=var, text="有効" if initial_value else "無効")
             checkbutton.grid(row=0, column=1, sticky="w", padx=5)
-            # チェックボタンのテキストを「有効」「無効」と切り替え、一時データを更新するローカル関数
-            def toggle_text_local(bool_var, cb, p_path):
+            # チェックボタンのテキストを「有効」「無効」と切り替えるローカル関数
+            # Note: チェックボックスはクリックされた時点で visual feedback が必要なので、テキストの更新は保持
+            def toggle_text_local(bool_var, cb):
                 cb.config(text="有効" if bool_var.get() else "無効")
-                # ★変更点7: UserSettingsではなく一時データを更新★
-                self._update_temp_setting_value(p_path, bool_var.get())
-            # BooleanVarの変更を検知し、トグル関数を呼び出す
-            var.trace_add("write", lambda *args, p_path=full_path, v=var, cb=checkbutton: toggle_text_local(v, cb, p_path))
+            
+            # BooleanVarの変更を検知し、トグル関数を呼び出す（テキスト表示のみ）
+            var.trace_add("write", lambda *args, v=var, cb=checkbutton: toggle_text_local(v, cb))
             # 初期表示時にテキストを正しく設定
-            toggle_text_local(var, checkbutton, full_path)
+            toggle_text_local(var, checkbutton)
+            # ★変更点: BooleanVarの変更に対する trace_add はテキスト表示のみ。値は保存時に取得する。
+            self._widget_vars[full_path] = var # 変数を保存
 
         elif item_obj.item_type == "path":
             # 文字列の入力フィールド
@@ -215,10 +180,19 @@ class UI(tk.Toplevel):
                 _filetypes =[("VOICEVOXEngineの実行ファイル", "run.exe"),("すべてのファイル", "*.*")]
             else:
                 _filetypes =[("すべてのファイル", "*.*")]
-            button = ttk.Button(parent_widget_frame, text="ファイルを選択", command=lambda:select_file_path(var, _filetypes))
+            
+            # select_file_path 関数を修正して、`var` に値をセットした後に直接 `_widget_vars` にも反映するようにする
+            def select_file_path_and_update(target_var, filetypes, path_for_var):
+                selected_path = tkinter.filedialog.askopenfilename(filetypes=filetypes)
+                if selected_path:
+                    target_var.set(selected_path)
+                    # ここで直接 _widget_vars の StringVar も更新する
+                    self._widget_vars[path_for_var].set(selected_path)
+
+            button = ttk.Button(parent_widget_frame, text="ファイルを選択", command=lambda p=full_path: select_file_path_and_update(var, _filetypes, p))
             button.grid(row=0, column=2, sticky="ew", padx=5)
-            # ★変更点8: 値の変化を追跡し、一時データを更新する★
-            var.trace_add("write", lambda *args, p=full_path, v=var: self._update_temp_setting_value(p, v.get()))
+            # ★変更点: trace_add や FocusOut イベントバインディングを削除。保存時に値を取得する。
+            self._widget_vars[full_path] = var # 変数を保存
             
         # 未対応のタイプが検出された場合
         else:
@@ -254,6 +228,7 @@ class UI(tk.Toplevel):
                     simple_item_frame = ttk.Frame(parent_frame)
                     simple_item_frame.grid(row=row_num_in_parent, column=0, sticky="ew", padx=5, pady=2)
                     simple_item_frame.columnconfigure(1, weight=1)
+                    # UI生成時には、UserSettingsのオブジェクトを使用してウィジェットを構築
                     self._create_widget_for_item(simple_item_frame, item, full_path, display_name)
                     row_num_in_parent += 1
                 else:
@@ -280,22 +255,61 @@ class UI(tk.Toplevel):
 
     def save_and_close(self):
         """
-        一時的な変更を実際のUserSettingsオブジェクトに適用し、ファイルに保存します。
+        すべてのUIウィジェットから現在の値を取得し、それを実際のUserSettingsオブジェクトに適用し、
+        最終的にファイルに保存します。
         その後、設定ウィンドウを閉じ、親UIに通知します。
         """
-        # ★変更点9: _temp_settings_data の内容を self.settings に一括で適用★
-        self.settings._raw_config_data = copy.deepcopy(self._temp_settings_data)
+        print("「保存して閉じる」ボタンが押されました。すべてのUI値を読み取り、設定に適用します。")
+        for path, var_obj in self._widget_vars.items():
+            item = self.settings.get_setting_item(path)
+            if not item:
+                print(f"警告: パス '{path}' の SettingItem が見つかりませんでした。スキップします。")
+                continue
+            new_value = var_obj.get()
+
+            # 型に応じた値の変換とバリデーション
+            if item.item_type == "int":
+                try:
+                    new_value = int(new_value)
+                    # 範囲チェックとクランプ（必要に応じて）
+                    min_val = item.value_range.get("min")
+                    max_val = item.value_range.get("max")
+                    if min_val is not None and new_value < min_val:
+                        new_value = min_val
+                        print(f"警告: '{path}' の値 {new_value} は最小値 {min_val} 未満のため、{min_val} に調整しました。")
+                    if max_val is not None and new_value > max_val:
+                        new_value = max_val
+                        print(f"警告: '{path}' の値 {new_value} は最大値 {max_val} を超えているため、{max_val} に調整しました。")
+                except ValueError:
+                    print(f"警告: '{path}' の値 '{new_value}' は無効な整数です。元の値を保持します。")
+                    new_value = item.value # 無効な場合は元の値を保持
+            elif item.item_type == "bool":
+                # BooleanVar.get() は既に適切なブール値を返す
+                pass
+            # 他の型（str, choice, path）は StringVar.get() や Combobox.get() が適切な文字列値を返すため、特別な変換は不要
+
+            # 更新された値を UserSettings にセット
+            if self.settings.set_setting_value(path, new_value):
+                print(f"設定 '{path}' を '{new_value}' に更新しました。")
+            else:
+                print(f"設定 '{path}' を '{new_value}' に更新できませんでした。")
 
         # UserSettingsオブジェクトに保持されている現在の設定データをファイルに書き込む
         config_controller.write_configfile(self.settings) 
         
         # 親のUIインスタンスに、設定が保存されたことを通知する
+        # ★read_configfileを呼び出すことで、UserSettingsオブジェクトがファイルから再ロードされ、
+        # アプリケーションの他の部分で最新の設定が利用可能になります。
         self.parent_ui.app.setting = config_controller.read_configfile("config.json")
         
         self.withdraw() # 設定ウィンドウを閉じる
 
 
 #GUIを通してユーザーがファイルのパスを指定する際に利用する関数。(指定するStringVar、指定ファイルの種類の辞書？、)
+# この関数はもはやUIクラスのメソッドではないため、UIクラスのインスタンスにアクセスできない。
+# _create_widget_for_item 内でラムダ関数を使って select_file_path_and_update を定義し、
+# その中で self._widget_vars を直接更新するように変更済み。
+# よって、このグローバル関数は不要になるが、互換性のため残しておく。
 def select_file_path(targetitem, filetype):
     target_path = tkinter.filedialog.askopenfilename(filetypes=filetype)
     if target_path:
