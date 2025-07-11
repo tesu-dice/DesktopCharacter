@@ -1,8 +1,3 @@
-"""
-config.json ファイルを読み書きしてアプリケーション設定を管理します。
-設定は UserSettings クラスを介して保存およびアクセスされ、個々の設定は
-SettingItem オブジェクトとして表現されます。
-"""
 import json
 import os
 from typing import Any, Dict, List, Optional, Union
@@ -240,6 +235,192 @@ def write_configfile(usersettings: UserSettings, filepath: str = "config.json"):
         print(f"エラー: '{filepath}' への書き込み中に予期しないエラーが発生しました。{e}")
 
 
+def get_default_data() -> Dict[str, Any]:
+    """
+    origin_config.json を読み取った時と同じような形になるような
+    デフォルトのJSON設定データを返します。
+    """
+    default_config = {
+        "ApplicationSettings": {
+            "name": "アプリケーション設定",
+            "type": "section",
+            "children": {
+                "geminiAPIkey": {
+                    "name": "geminiAPIkey",
+                    "type": "str",
+                    "value": ""
+                },
+                "CharacterFolder": {
+                    "name": "キャラクターの立ち絵",
+                    "type": "choice",
+                    "value": "CHARAT-MONO"
+                },
+                "CharacterSize": {
+                    "name": "キャラクターサイズ",
+                    "type": "int",
+                    "value": 500
+                },
+                "FontSize": {
+                    "name": "文字サイズ",
+                    "type": "int",
+                    "value": 10
+                },
+                "ActiveSpeak": {
+                    "name": "自発的な会話",
+                    "type": "section",
+                    "children": {
+                        "on/off": {
+                            "name": "自発的な会話のon/off",
+                            "type": "bool",
+                            "value": True
+                        },
+                        "Time": {
+                            "name": "会話の頻度（毎秒）",
+                            "type": "int",
+                            "value": 102
+                        }
+                    }
+                },
+                "Permisson": {
+                    "name": "アプリでの利用を許可する項目",
+                    "type": "section",
+                    "children": {
+                        "ActiveWindow": {
+                            "name": "作業中のウィンドウ",
+                            "type": "bool",
+                            "value": True
+                        },
+                        "PlayingMedia": {
+                            "name": "再生中のメディア",
+                            "type": "bool",
+                            "value": True
+                        }
+                    }
+                }
+            },
+            "ActiveSpeak": {
+                "on/off": True,
+                "Time": 100
+            },
+            "Permisson": {
+                "ActiveWindow": True,
+                "PlayingMedia": True
+            },
+            "FontSize": 20
+        },
+        "VoiceSettings": {
+            "name": "音声設定",
+            "type": "section",
+            "children": {
+                "engine": {
+                    "name": "音声合成エンジン",
+                    "type": "choice",
+                    "value": "VOICEVOX",
+                    "options": [
+                        "None",
+                        "WindowsNarrator",
+                        "VOICEVOX"
+                    ]
+                },
+                "windowsNarrator": {
+                    "name": "Windows Narrator 設定",
+                    "type": "section",
+                    "children": {
+                        "Model": {
+                            "name": "音声モデル",
+                            "type": "choice",
+                            "value": "Microsoft Sayaka - Japanese (Japan)",
+                            "options": []
+                        }
+                    }
+                },
+                "VOICEVOX": {
+                    "name": "VOICEVOX 設定",
+                    "type": "section",
+                    "children": {
+                        "path": {
+                            "type": "path",
+                            "name": "VOICEVOXの起動パス",
+                            "value": "C:/Program Files/VOICEVOX/vv-engine/run.exe"
+                        },
+                        "usegpu": {
+                            "type": "bool",
+                            "name": "音声合成にGPUを使用",
+                            "value": True
+                        },
+                        "autorun": {
+                            "type": "bool",
+                            "name": "アプリ起動時にエンジンを自動で起動",
+                            "value": True
+                        },
+                        "Model": {
+                            "type": "choice",
+                            "name": "音声モデル",
+                            "value": "未設定",
+                            "options": []
+                        }
+                    }
+                }
+            },
+            "VOICEVOX": {
+                "usegpu": True,
+                "autorun": True
+            }
+        }
+    }
+    return default_config
+
+
 if __name__ == '__main__':
-    import main
-    main.start_app()
+    # このブロックは、config_controller.py のオリジナルの __main__ ブロックを置き換えます。
+    # main モジュールが存在しないため、ここでは代わりに get_default_data 関数をテストします。
+
+    # get_default_data 関数を呼び出してデフォルト設定を取得
+    default_settings_data = get_default_data()
+    print("Default configuration data generated by get_default_data():")
+    print(json.dumps(default_settings_data, indent=2, ensure_ascii=False))
+
+    # UserSettings クラスを使用してデフォルトデータをロードし、SettingItem を確認する例
+    settings_manager = UserSettings()
+    settings_manager.load_from_dict(default_settings_data)
+
+    print("\n--- Testing UserSettings with default data ---")
+    
+    # いくつかの設定値を取得
+    gemini_key = settings_manager.get_setting_value("ApplicationSettings.geminiAPIkey")
+    print(f"ApplicationSettings.geminiAPIkey: {gemini_key}") # 期待値: ""
+
+    font_size = settings_manager.get_setting_value("ApplicationSettings.FontSize")
+    print(f"ApplicationSettings.FontSize: {font_size}") # 期待値: 10
+
+    active_speak_on_off = settings_manager.get_setting_value("ApplicationSettings.ActiveSpeak.on/off")
+    print(f"ApplicationSettings.ActiveSpeak.on/off: {active_speak_on_off}") # 期待値: True
+
+    voicevox_engine = settings_manager.get_setting_value("VoiceSettings.engine")
+    print(f"VoiceSettings.engine: {voicevox_engine}") # 期待値: "VOICEVOX"
+
+    # 設定値を変更
+    print("\n--- Changing a setting value ---")
+    success = settings_manager.set_setting_value("ApplicationSettings.FontSize", 16)
+    print(f"Set ApplicationSettings.FontSize to 16: {success}")
+    print(f"New ApplicationSettings.FontSize: {settings_manager.get_setting_value('ApplicationSettings.FontSize')}") # 期待値: 16
+
+    # 存在しないパスを設定しようとする
+    print("\n--- Trying to set a non-existent path ---")
+    success_non_existent = settings_manager.set_setting_value("NonExistent.Path.Value", "test")
+    print(f"Set NonExistent.Path.Value: {success_non_existent}") # 期待値: False
+
+    # 型が異なる値を設定しようとする（intのところにstr）
+    print("\n--- Trying to set a wrong type value ---")
+    success_wrong_type = settings_manager.set_setting_value("ApplicationSettings.CharacterSize", "large")
+    print(f"Set ApplicationSettings.CharacterSize to 'large': {success_wrong_type}") # 期待値: False
+
+    # 変更されたデータ構造を JSON に変換して表示
+    print("\n--- Data structure after modifications (for save) ---")
+    modified_data_for_save = settings_manager.to_dict_for_save()
+    print(json.dumps(modified_data_for_save, indent=2, ensure_ascii=False))
+
+    # このコメントアウトされた行は、元の main.start_app() を呼び出します。
+    # if main が存在しない環境でこのスクリプトを実行するとエラーになるため、コメントアウトしています。
+    # import main
+    # main.start_app()

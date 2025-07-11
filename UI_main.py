@@ -68,12 +68,14 @@ class ContextMenuManager:
 class UI(tk.Tk):
     def __init__(self, app, setting:UserSettings, debug =-1):
         super().__init__()
+        #デバックの処理
+        self.debug = debug
         if debug >= 0:
             indent = "  " * debug
             print(f"{indent}UI.py __init__() called.")
             UI.show_message_box("デバックメッセージ", "UI_main.py show_message_box()の動作確認です。")
             debug = debug + 1 if debug >= 0 else -1
-            self.debug = debug
+            
 
         self.app = app
         self.setting = setting
