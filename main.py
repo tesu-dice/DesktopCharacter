@@ -31,7 +31,7 @@ class myapp():
             print("最新版をダウンロードしてください")
         else :
             print(f"お使いのバージョンは最新です。 最新バージョン: {_result[1]}, 現在のバージョン: {_result[2]}")
-        _start_info_texts += f"バージョン情報:\n{'最新です。' if _result[0] else '更新があります。'} ({_result[1]})\n"
+        _start_info_texts += f"---バージョン情報---:\n{'最新です。' if _result[0] else '更新があります。'} ({_result[1]}->{_result[2]})\n\n"
             
             
         #ユーザで他の読み込み
@@ -46,7 +46,7 @@ class myapp():
             self.setting.get_setting_value("VoiceSettings.VOICEVOX.path") != "":
             
             self.engine_process = start_server(self.setting.get_setting_value("VoiceSettings.VOICEVOX.path"), self.setting.get_setting_value("VoiceSettings.VOICEVOX.usegpu"),debug=debug)
-            _start_info_texts += f"VOICEVOXエンジンの起動:\n{('成功' if self.engine_process != False else '失敗')}"
+            _start_info_texts += f"---VOICEVOXエンジンの起動---\n{('成功' if self.engine_process != False else '失敗')}\n\n"
         #各要素の起動
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.setting, debug=debug)
         self.ui = UI_main.UI(self, self.setting, debug=debug)
