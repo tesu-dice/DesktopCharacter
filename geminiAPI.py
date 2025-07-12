@@ -23,8 +23,8 @@ from config_controller import UserSettings
 
 class geminiAI():
         #初期化
-        def __init__(self, usersetting:UserSettings, ui, debug = -1):
-            self.ui = ui
+        def __init__(self, usersetting:UserSettings, app, talkhistory, debug = -1):
+            self.app = app
             self.usersetting = usersetting
 
             yourAPIkey = usersetting.get_setting_value("ApplicationSettings.geminiAPIkey")#APIkeyの設定
@@ -90,8 +90,8 @@ class geminiAI():
             self.model = genai.GenerativeModel(model_name = 'gemini-2.0-flash',#'gemini-2.0-pro-exp'上限ついた。5/15
                                         generation_config= generation_config,
                                         safety_settings=safety_settings)
-
-            self.history = [{"role": "user", "parts":[base_prompt + Character_set_text]}, {"role": "model", "parts":["了解しました。"]}]
+            #会話履歴を作成
+            self.init_prompt= [{"role": "user", "parts":[base_prompt + Character_set_text]},({"role": "model", "parts":["了解しました。"]})]
             
         #キャラクター画像を読み込み、AIへ指示書として返す。
         def load_imgs(self, dir_name):
@@ -115,24 +115,24 @@ class geminiAI():
             if debug >= 0:
                 indent = "  " * debug
                 print(f"{indent}geminiAPI.py response() was called.",input_text)
-                if(input_text == "histroy"):
+                if(input_text == "<<show histroy>>"):
                     self.view_conversation_log()
                 
-                print(f"{indent}self.history = {self.history}")
+                print(f"{indent}self.app.TalkHistory = {self.app.TalkHistory}")
                 debug = debug + 1
 
             input_content = [{"role": "user", "parts":[input_text]}]
             #送信するコンテンツの選別
-            if len(self.history) > 7:
-                past_contets = self.history[:1] + self.history[-5:]
+            if len(self.app.TalkHistory) > 7:
+                past_contets = self.init_prompt + self.app.TalkHistory[-5:]
             else:
-                past_contets = self.history
+                past_contets = self.init_prompt + self.app.TalkHistory
             contents = past_contets + input_content
             
             #会話とその記録
             response = self.model.generate_content(contents=contents)
-            self.history.append({"role": "user", "parts":[input_text]})
-            self.history.append({"role": "model", "parts":[response.text]})
+            self.app.TalkHistory.append({"role": "user", "parts":[input_text]})
+            self.app.TalkHistory.append({"role": "model", "parts":[response.text]})
 
 
 
@@ -151,9 +151,9 @@ class geminiAI():
         # 会話ログ表示用の関数
         def view_conversation_log(self):
             print("\n--- Full Conversation Log ---")
-            if not self.history:
+            if not self.app.TalkHistory:
                 print("  Log is empty.")
-            for message in self.history:
+            for message in self.app.TalkHistory:
                 role = message.get("role", "Unknown Role")
                 content = ""
                 if "parts" in message and message["parts"]:
@@ -178,7 +178,7 @@ class geminiAI():
                 if text == "":
                     break
                 if text.find("："):
-                    self.ui.update_character_image(text.split("：")[0])
+                    self.app.ui.update_character_image(text.split("：")[0])
                     text = text.split("：")[-1]
 
                 
@@ -196,7 +196,7 @@ class geminiAI():
                     id = str(chosen_value).split("=")[-1]
                     talk_VoiceVoxEngine.text_to_speech(text, int(id), debug=debug)
                 else:
-                    self.ui.show_message_box("エラー", f"音声読み上げにおいて対応していない読み上げモードが選択されています。{mode}")
+                    self.app.show_message_box("エラー", f"音声読み上げにおいて対応していない読み上げモードが選択されています。{mode}")
                     
         
 
