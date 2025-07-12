@@ -74,7 +74,7 @@ class UI(tk.Toplevel):
 
         # --- 保存ボタンの配置 ---
         # ユーザーが変更を確定し、ウィンドウを閉じるためのボタン
-        save_button = ttk.Button(self, text="保存して閉じる", command=self.save_and_close)
+        save_button = ttk.Button(self, text="保存して再起動", command=self.save_and_close)
         save_button.pack(pady=10)
 
     def _on_frame_configure(self, event=None):
@@ -291,12 +291,8 @@ class UI(tk.Toplevel):
                 print(f"設定 '{path}' を '{new_value}' に更新できませんでした。")
 
         # UserSettingsオブジェクトに保持されている現在の設定データをファイルに書き込む
-        config_controller.write_configfile(self.settings) 
-        
-        # 親のUIインスタンスに、設定が保存されたことを通知する
-        # ★read_configfileを呼び出すことで、UserSettingsオブジェクトがファイルから再ロードされ、
-        # アプリケーションの他の部分で最新の設定が利用可能になります。
-        self.parent_ui.app.setting = config_controller.read_configfile("config.json")
+        config_controller.write_configfile(self.settings)
+        self.master.app.reboot(self.master.debug)
         
         self.withdraw() # 設定ウィンドウを閉じる
 
