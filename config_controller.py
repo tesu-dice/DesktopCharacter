@@ -282,31 +282,31 @@ def get_default_data() -> Dict[str, Any]:
                     "type": "str",
                     "value": ""
                 },
-                "CharacterFolder": {
-                    "name": "キャラクターの立ち絵",
-                    "type": "choice",
-                    "value": "CHARAT-MONO"
-                },
-                "CharacterSize": {
-                    "name": "キャラクターサイズ",
-                    "type": "int",
-                    "value": 500
-                },
-                "FontSize": {
-                    "name": "文字サイズ",
-                    "type": "int",
-                    "value": 10
-                },
-                "ImgFlip":{
-                    "name": "キャラ画像の左右反転",
-                    "type": "bool",
-                    "value": False
-
-                },
-                "AlwaysOnTop": {
-                    "name": "キャラ画像を常に最前面表示",
-                    "type": "bool",
-                    "value": False
+                "CharacterImage":{
+                    "name":"キャラクターの立ち絵",
+                    "type":"section",
+                    "children":{
+                        "Folder": {
+                            "name": "参照する立ち絵フォルダ",
+                            "type": "choice",
+                            "value": "CHARAT-MONO"
+                        },
+                        "Size": {
+                            "name": "キャラクターサイズ",
+                            "type": "int",
+                            "value": 500
+                        },
+                        "Flip":{
+                            "name": "キャラ画像の左右反転",
+                            "type": "bool",
+                            "value": False
+                        },
+                        "AlwaysOnTop": {
+                            "name": "キャラ画像を常に最前面表示",
+                            "type": "bool",
+                            "value": True
+                        }
+                    }
                 },
                 "ActiveSpeak": {
                     "name": "自発的な会話",
