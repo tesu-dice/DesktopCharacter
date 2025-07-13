@@ -106,10 +106,13 @@ class myapp():
         if self.setting.get_setting_value("ApplicationSettings.Permisson.PlayingMedia") == True:
             m = "再生中のメディア：" + self.WinInfo.get_plaing_media(debug = debug + 1 if debug >= 0 else -1) + "\n"
         send_text = text + "\n"+ t + w + m 
-        response_text = self.ai.response(send_text, debug=debug)
+        response_text, token = self.ai.response(send_text, debug=debug)
         #入力と返答をアプリ側へ反映
         self.add_talkhistory("user",send_text, debug=debug)
         self.add_talkhistory("model",response_text, debug=debug)
+        if self.setting.get_setting_value("ApplicationSettings.ShowMetadatas") == True:
+            print("ーーーーーートークン数を表示します。ーーーーーー")
+            self.ui.talk_window.add_log_text("利用したトークン数：" + str(token), debug=debug)
 
     def add_talkhistory(self,type, text, debug = -1):
         newhistory = {"role": f"{type}", "parts":[text]}

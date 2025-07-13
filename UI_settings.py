@@ -24,7 +24,7 @@ class UI(tk.Toplevel):
     アプリケーションの設定オプションを表示・変更するためのトップレベルウィンドウ。
     設定データは再帰的にUIに表示され、ユーザーの入力に応じてリアルタイムで更新されます。
     """
-    def __init__(self, ui, settings: config_controller.UserSettings):
+    def __init__(self, ui, app, settings: config_controller.UserSettings):
         """
         UI_settingsウィンドウを初期化します。
         
@@ -39,6 +39,7 @@ class UI(tk.Toplevel):
         self.geometry("500x600")  # ウィンドウの初期サイズを設定
         self.settings = settings  # UserSettingsオブジェクトをインスタンス変数として保持
         self.parent_ui = ui # 親UIへの参照を保持
+        self.app= app
 
         # ★変更点1: 一時的な設定データは不要になるため削除。代わりに、ウィジェットのVarを保持する辞書を初期化★
         self._widget_vars: dict[str, tk.Variable] = {} # {full_path: tk.Variable_instance}
@@ -122,6 +123,8 @@ class UI(tk.Toplevel):
         if item_obj.item_type == "choice":
             # 選択肢がある場合（例: ドロップダウンリスト）
             var = tk.StringVar(value=initial_value) # 現在の値をStringVarにセット
+            if full_path == "ApplicationSettings.Model":
+                item_obj.options = self.app.ai.get_models()
             if full_path == "ApplicationSettings.CharacterImage.Folder":
                 item_obj.options = get_CharacterFolders()
             elif full_path == "VoiceSettings.VOICEVOX.Model":
@@ -130,7 +133,6 @@ class UI(tk.Toplevel):
                 item_obj.options = talk_WindowsNarratorManager.get_SAPIVoice_names()
             combobox = ttk.Combobox(parent_widget_frame, textvariable=var, values=item_obj.options, state="readonly")
             combobox.grid(row=0, column=1, sticky="ew", padx=5)
-            # ★変更点: Comboboxの選択に対する trace_add を削除。値は保存時に取得する。
             self._widget_vars[full_path] = var # 変数を保存
 
         elif item_obj.item_type == "int":
@@ -138,7 +140,6 @@ class UI(tk.Toplevel):
             var = tk.StringVar(value=str(initial_value)) # 現在の値を文字列としてStringVarにセット
             entry = ttk.Entry(parent_widget_frame, textvariable=var)
             entry.grid(row=0, column=1, sticky="ew", padx=5)
-            # ★変更点: trace_add や FocusOut イベントバインディングを削除。保存時に値を取得し、バリデーションを行う。
             self._widget_vars[full_path] = var # 変数を保存
 
         elif item_obj.item_type == "str":
@@ -146,7 +147,6 @@ class UI(tk.Toplevel):
             var = tk.StringVar(value=initial_value)
             entry = ttk.Entry(parent_widget_frame, textvariable=var)
             entry.grid(row=0, column=1, sticky="ew", padx=5)
-            # ★変更点: trace_add や FocusOut イベントバインディングを削除。保存時に値を取得する。
             self._widget_vars[full_path] = var # 変数を保存
 
         elif item_obj.item_type == "bool":
@@ -163,7 +163,6 @@ class UI(tk.Toplevel):
             var.trace_add("write", lambda *args, v=var, cb=checkbutton: toggle_text_local(v, cb))
             # 初期表示時にテキストを正しく設定
             toggle_text_local(var, checkbutton)
-            # ★変更点: BooleanVarの変更に対する trace_add はテキスト表示のみ。値は保存時に取得する。
             self._widget_vars[full_path] = var # 変数を保存
 
         elif item_obj.item_type == "path":
@@ -187,7 +186,6 @@ class UI(tk.Toplevel):
 
             button = ttk.Button(parent_widget_frame, text="ファイルを選択", command=lambda p=full_path: select_file_path_and_update(var, _filetypes, p))
             button.grid(row=0, column=2, sticky="ew", padx=5)
-            # ★変更点: trace_add や FocusOut イベントバインディングを削除。保存時に値を取得する。
             self._widget_vars[full_path] = var # 変数を保存
             
         # 未対応のタイプが検出された場合

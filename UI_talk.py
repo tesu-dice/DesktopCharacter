@@ -83,6 +83,13 @@ class TalkWindow(tk.Toplevel):
             self.message_text.insert("end", message)
             self.message_text.see("end")
             self.message_text.configure(state="disabled")
+    
+    def add_log_text(self, message, debug = -1):
+        if message:
+            self.message_text.configure(state="normal")
+            self.message_text.insert("end", message)
+            self.message_text.see("end")
+            self.message_text.configure(state="disabled")
 
 if __name__ == "__main__":
     import main

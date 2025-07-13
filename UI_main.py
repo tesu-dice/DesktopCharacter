@@ -42,8 +42,10 @@ class ContextMenuManager:
         self.ui.talk_window.focus_force()
         
     def show_settingUI(self):
-        if self.ui.setting_window.winfo_exists() == False:
-            self.ui.setting_window = UI_settings.UI(self.ui, self.app.setting)
+        if self.ui.setting_window is None :
+            self.ui.setting_window = UI_settings.UI(self.ui, self.app, self.app.setting)
+        elif self.ui.setting_window.winfo_exists():
+            self.ui.setting_window = UI_settings.UI(self.ui, self.app, self.app.setting)
         else:
             self.ui.setting_window.deiconify()
             self.ui.setting_window.focus_force()
@@ -96,7 +98,8 @@ class UI(tk.Tk):
         # --- ▲ フォント設定 ▲ ---
 
         self.talk_window = UI_talk.TalkWindow(self, self.app, self.setting, debug=debug); self.talk_window.withdraw()
-        self.setting_window = UI_settings.UI(self, self.setting); self.setting_window.withdraw()
+        self.setting_window = None
+        
         # メインウィンドウの設定
         self.title("デスクトップキャラクター")
         if self.setting.get_setting_value("ApplicationSettings.CharacterImage.AlwaysOnTop"):
