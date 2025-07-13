@@ -288,7 +288,7 @@ def get_default_data() -> Dict[str, Any]:
                     "value": "gemini-2.0-flash-lite"
                 },
                 "ShowMetadatas":{
-                    "name":"会話のメタデータを非表示(未実装)",
+                    "name":"会話のメタデータを表示(調整中)",
                     "type":"bool",
                     "value":False
                 },
@@ -330,7 +330,7 @@ def get_default_data() -> Dict[str, Any]:
                         "Time": {
                             "name": "会話の頻度（毎秒）",
                             "type": "int",
-                            "value": 102
+                            "value": 300
                         }
                     }
                 },
@@ -368,7 +368,7 @@ def get_default_data() -> Dict[str, Any]:
                 "engine": {
                     "name": "音声合成エンジン",
                     "type": "choice",
-                    "value": "VOICEVOX",
+                    "value": "None",
                     "options": [
                         "None",
                         "WindowsNarrator",
@@ -394,7 +394,7 @@ def get_default_data() -> Dict[str, Any]:
                         "path": {
                             "type": "path",
                             "name": "VOICEVOXの起動パス",
-                            "value": "C:/Program Files/VOICEVOX/vv-engine/run.exe"
+                            "value": ""
                         },
                         "usegpu": {
                             "type": "bool",
@@ -404,7 +404,7 @@ def get_default_data() -> Dict[str, Any]:
                         "autorun": {
                             "type": "bool",
                             "name": "アプリ起動時にエンジンを自動で起動",
-                            "value": True
+                            "value": False
                         },
                         "Model": {
                             "type": "choice",
@@ -414,10 +414,6 @@ def get_default_data() -> Dict[str, Any]:
                         }
                     }
                 }
-            },
-            "VOICEVOX": {
-                "usegpu": True,
-                "autorun": True
             }
         }
     }

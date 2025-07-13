@@ -57,15 +57,17 @@ class myapp():
 
         #各要素の起動
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.setting, debug=debug)
-        self.ui = UI_main.UI(self, self.setting, debug=debug)
+        
         self.ai = geminiAPI.geminiAI(self.setting, self, debug=debug)
+        self.ui = UI_main.UI(self, self.setting, debug=debug)
 
         #geminiAPIの接続確認
-        _start_info_texts += f"---GeminiAPIの接続確認---\n"
-        _result = self.ai.test_connection(debug=debug)
-        _start_info_texts += f"{('成功' if _result[0] else '失敗')}\n\n"
-        if _result[0] == False:
-            _start_info_error += f"GeminiAPIの接続に失敗しました。:\n{_result[1]}\n\n"
+        if self.setting.get_setting_value("ApplicationSettings.geminiAPIkey") != "":
+            _start_info_texts += f"---GeminiAPIの接続確認---\n"
+            _result = self.ai.test_connection(debug=debug)
+            _start_info_texts += f"{('成功' if _result[0] else '失敗')}\n\n"
+            if _result[0] == False:
+                _start_info_error += f"GeminiAPIの接続に失敗しました。:\n{_result[1]}\n\n"
 
 
 

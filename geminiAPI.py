@@ -109,6 +109,8 @@ class geminiAI():
         def get_models(self, debug = -1):
             #モデルの種類確認
             names = []
+            if self.usersetting.get_setting_value("ApplicationSettings.geminiAPIkey") == "":
+                return "APIキーが設定されていません。"
             for m in genai.list_models():
                 if "generateContent" in m.supported_generation_methods:
                     name = m.name.split("/")[-1]
@@ -215,7 +217,7 @@ class geminiAI():
             # コストや速度を考慮し、最小限の処理で済む呼び出しを選ぶ
             # 例: generate_content に短いプロンプトと最小限の出力設定
             test_prompt = "[System] アプリケーション起動時のAPI接続テストです。応答内容は不要です。"
-            timeout_seconds = 15 # APIからの応答を待つ最大秒数。環境に合わせて調整。
+            timeout_seconds = 5 # APIからの応答を待つ最大秒数。環境に合わせて調整。
 
             if current_debug >= 0: print(f"{indent}geminiAPI.py test_connection: Attempting API call with timeout {timeout_seconds}s.")
 

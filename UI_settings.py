@@ -41,7 +41,6 @@ class UI(tk.Toplevel):
         self.parent_ui = ui # 親UIへの参照を保持
         self.app= app
 
-        # ★変更点1: 一時的な設定データは不要になるため削除。代わりに、ウィジェットのVarを保持する辞書を初期化★
         self._widget_vars: dict[str, tk.Variable] = {} # {full_path: tk.Variable_instance}
 
         # --- 設定表示領域のためのフレームとスクロールバー付きのキャンバスの配置 ---
@@ -77,6 +76,8 @@ class UI(tk.Toplevel):
         # ユーザーが変更を確定し、ウィンドウを閉じるためのボタン
         save_button = ttk.Button(self, text="保存して再起動", command=self.save_and_close)
         save_button.pack(pady=10)
+        #Xボタンで破棄しないように設定
+        self.protocol("WM_DELETE_WINDOW", self.withdraw)
 
     def _on_frame_configure(self, event=None):
         """
@@ -128,7 +129,10 @@ class UI(tk.Toplevel):
             if full_path == "ApplicationSettings.CharacterImage.Folder":
                 item_obj.options = get_CharacterFolders()
             elif full_path == "VoiceSettings.VOICEVOX.Model":
-                item_obj.options = talk_VoiceVoxEngine.get_speakers()
+                if self.app.engine_process is not None:
+                    item_obj.options = talk_VoiceVoxEngine.get_speakers()
+                else :
+                    item_obj.options = ["サーバを起動していません。"]
             elif full_path == "VoiceSettings.windowsNarrator.Model":
                 item_obj.options = talk_WindowsNarratorManager.get_SAPIVoice_names()
             combobox = ttk.Combobox(parent_widget_frame, textvariable=var, values=item_obj.options, state="readonly")
