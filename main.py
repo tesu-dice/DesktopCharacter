@@ -15,16 +15,15 @@ from release_check import check_nowver_is_newestver, CURRENT_APP_VERSION
 
 
 class myapp():
-    def __init__(self, engine_process = None, TalkHistory = None, debug = -1):
+    def __init__(self, engine_process = None, TalkHistory = [], debug = -1):
         #初期化
         self.engine_process = engine_process
-        # TalkHistoryを安全に引き継ぐための作法
-        if TalkHistory is None:
-            self.TalkHistory = []
-        else:
-            self.TalkHistory = TalkHistory
-            
+        self.TalkHistory = TalkHistory
         _start_info_texts ="" # 起動メッセージ用テキスト
+        _start_info_error ="" # 起動エラーメッセージ用テキスト
+        
+            
+        
         #デバックフラグの管理
         if debug > -1:
             indent = "  " * debug
@@ -39,28 +38,44 @@ class myapp():
             print("最新版をダウンロードしてください")
         else :
             print(f"お使いのバージョンは最新です。 最新バージョン: {_result[1]}, 現在のバージョン: {_result[2]}")
-        _start_info_texts += f"---バージョン情報---:\n{'最新です。' if _result[0] else '更新があります。'} ({_result[1]}->{_result[2]})\n\n"
+        _start_info_texts += f"---バージョン情報---\n{'最新です。' if _result[0] else '更新があります。'} [{_result[1]}] -> [{_result[2]}]\n\n"
             
             
         #ユーザデータの読み込み
         self.setting = config_controller.read_configfile("config.json")
         if self.setting is None:
-            print("コンフィグファイルの読み込みに失敗しました。")
+            _start_info_error += f"設定ファイルの読み込みに失敗しました。\n"
+            
         #VOICEVOXEngineの起動
         if  self.engine_process == None and \
-            self.setting.get_setting_value("VoiceSettings.engine") == "VOICEVOX" and \
-            self.setting.get_setting_value("VoiceSettings.VOICEVOX.autorun") == True and \
-            self.setting.get_setting_value("VoiceSettings.VOICEVOX.path") != "":
+            self.setting.get_setting_value("VoiceSettings.VOICEVOX.autorun") == True:
             
             self.engine_process = start_server(self.setting.get_setting_value("VoiceSettings.VOICEVOX.path"), self.setting.get_setting_value("VoiceSettings.VOICEVOX.usegpu"),debug=debug)
             _start_info_texts += f"---VOICEVOXエンジンの起動---\n{('成功' if self.engine_process != False else '失敗')}\n\n"
+
+        
+
         #各要素の起動
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.setting, debug=debug)
         self.ui = UI_main.UI(self, self.setting, debug=debug)
-        self.ai = geminiAPI.geminiAI(self.setting, self, self.TalkHistory, debug=debug)
+        self.ai = geminiAPI.geminiAI(self.setting, self, debug=debug)
+
+        #geminiAPIの接続確認
+        _start_info_texts += f"---GeminiAPIの接続確認---\n"
+        _result = self.ai.test_connection(debug=debug)
+        _start_info_texts += f"{('成功' if _result[0] else '失敗')}\n\n"
+        if _result[0] == False:
+            _start_info_error += f"GeminiAPIの接続に失敗しました。:\n{_result[1]}\n\n"
+
+
+
+        #起動メッセージ
+        self.ui.show_message_box("info", "起動メッセージ", _start_info_texts)
+        #エラーメッセージ
+        if _start_info_error != "":
+            self.ui.show_message_box("info", "エラーメッセージ", _start_info_error)
         
-        self.ui.show_message_box("info", "DesktopCharacter起動メッセージ", str(_start_info_texts))
-        self.ui.after(500, self.update)
+        
 
     #アプリケーションの再起動
     def reboot(self, debug = -1):
@@ -78,7 +93,7 @@ class myapp():
         
         if self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.on/off") == True:    
             if self.WinInfo.check_freetime():
-                self.SendMessage_toAI("System:ユーザは上記のように作業中です。話しかけてください。", debug=debug)
+                self.SendMessage_toAI("[System] ユーザー作業中...", debug=debug)
         self.ui.after(10000, self.update)
 
     #入力テキストをAIに伝え、UIにログを追加
@@ -107,7 +122,7 @@ class myapp():
                 debug +=1
             self.ui.talk_window.add_log(newhistory)
 
-def start_app(engine_process = None, TalkHistory = None, debug = -1):
+def start_app(engine_process = None, TalkHistory = [], debug = -1):
     """
     アプリケーションを起動する唯一の関数。
     初回起動と再起動の両方を担う。
@@ -123,6 +138,9 @@ def get_CharacterFolders(debug=-1):
         print(f"{indent}loaded files = {files}")
     return files
 
+
+
+
 if __name__ =="__main__":
     # 初回起動
-    start_app(debug=0)
+    start_app(debug=-1)
