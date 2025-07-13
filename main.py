@@ -77,6 +77,8 @@ class myapp():
         if _start_info_error != "":
             self.ui.show_message_box("info", "エラーメッセージ", _start_info_error)
         
+        #アプリケーション動作開始
+        self.update(debug=debug)
         
 
     #アプリケーションの再起動
@@ -87,7 +89,7 @@ class myapp():
     
     #状態監視の実行
     def update(self, debug = -1):
-        # print(self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.Time"))
+        print(self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.Time"))
         if debug >= 0:
             indent = "  " * debug
             print(f"{indent}main.py update() called. activespeak={self.setting.get_setting_value('ApplicationSettings.ActiveSpeak.on/off')}")
