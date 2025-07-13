@@ -21,19 +21,13 @@ class TalkWindow(tk.Toplevel):
         self.master_controller = master_controller
         self.setting = setting
 
-        # 削除ボタンの上書き（WM_DELETE_WINDOW プロトコルを上書き）
-        self.protocol("WM_DELETE_WINDOW", self.withdraw) 
-
-
+        
 
         # フレームとスクロールバー付きのキャンバスの配置 (UI_settings.py と同様の構造)
         main_frame = tk.Frame(self)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
  
         # 入力エリア
-        # main_frame の下部に配置し、水平方向(X)にのみ拡張します。
-        # input_frame の高さは、中のウィジェット(Entry, Button)によって決まります。
-        # pady=(5, 0) は、input_frame の上に5ピクセルの余白を設けます。
         input_frame = tk.Frame(main_frame)
         input_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(5, 0))
 
@@ -60,22 +54,40 @@ class TalkWindow(tk.Toplevel):
         self.bar_vertical_scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.message_text["yscrollcommand"] = self.bar_vertical_scroll.set
 
+        #会話履歴があればそれを表示
+        for l in self.master_controller.TalkHistory:
+            self.add_log(l)
+        #Xボタンで破棄しないように設定
+        self.protocol("WM_DELETE_WINDOW", self.withdraw)
+        
+
     def _on_send_click(self, event=None): # debug引数を削除し、self.debugを使用
         """送信ボタンクリックまたはEnterキー押下時の処理"""
         message = self.input_text.get()
         if message:
-            # ユーザーメッセージをログに追加
-            self.add_log("あなた: " + message)
             # master_controller 経由でAIに送信
             self.master_controller.SendMessage_toAI(message, debug=self.debug)
             # 入力フィールドをクリア
             self.input_text.delete(0, tk.END)
 
-    def add_log(self, message):
+    def add_log(self, talkhistory, debug=-1):
         """ログ表示エリアにメッセージを追加します。"""
+        message = str(talkhistory.get("parts")[0])
+        if talkhistory.get("role") == "user":
+            message = f"入力:{message}"
+        elif talkhistory.get("role") == "model":
+            message = f">>>\n{message}\n"
+
         if message:
             self.message_text.configure(state="normal")
-            self.message_text.insert("end", message + "\n")
+            self.message_text.insert("end", message)
+            self.message_text.see("end")
+            self.message_text.configure(state="disabled")
+    
+    def add_log_text(self, message, debug = -1):
+        if message:
+            self.message_text.configure(state="normal")
+            self.message_text.insert("end", message)
             self.message_text.see("end")
             self.message_text.configure(state="disabled")
 

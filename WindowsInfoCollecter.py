@@ -40,11 +40,9 @@ class win_info_collector():
         window_title = win32gui.GetWindowText(win32gui.GetForegroundWindow())
         return window_title
     
-
-
-
+    #再生中のメディアを取得
     def get_plaing_media(self, debug=-1):
-        #実際に動作するのは_get_media_info(). 非同期的に動作するので分割self側で履歴管理とかするならここで。
+        #実際に動作するのは_get_media_info(). 非同期的に動作するので分割。self側で履歴管理とかするならここで。
         return asyncio.run(_get_media_info(debug=debug))
 
     
@@ -118,6 +116,10 @@ async def _get_media_info(debug = -1) -> str:
             media_state = PlaybackStatus(playback_info.playback_status).name 
     except Exception as e:
         print(f"WindowsMediaの取得に失敗しました。エラー:\n   {e}")
+        media_state = "取得失敗"
+        media_title = "取得失敗"
+        media_artist = "取得失敗"
+    
     if debug >= 0:
         indent = "  " * debug
         print(f"{indent}WindowsInfoCollector._get_media_info() called.")

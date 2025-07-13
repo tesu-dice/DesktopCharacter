@@ -37,28 +37,27 @@ class ContextMenuManager:
         self.menu.post(event.x_root, event.y_root)
 
     def show_textFrame(self):
-        if self.ui.talk_window == None:
-            self.ui.talk_window = UI_talk.TalkWindow(self.ui, self.app, self.ui.setting,  debug=self.ui.debug)
-        else:
-            #アクティブウィンドウをself.ui.talk_windowsにする。
-            self.ui.talk_window.deiconify()
-            self.ui.talk_window.focus_force()
+        #アクティブウィンドウをself.ui.talk_windowsにする。
+        self.ui.talk_window.deiconify()
+        self.ui.talk_window.focus_force()
         
     def show_settingUI(self):
-        if self.ui.setting_window == None:
-            self.ui.setting_window = UI_settings.UI(self, self.setting)
+        if self.ui.setting_window is None :
+            self.ui.setting_window = UI_settings.UI(self.ui, self.app, self.app.setting)
+        elif self.ui.setting_window.winfo_exists():
+            self.ui.setting_window = UI_settings.UI(self.ui, self.app, self.app.setting)
         else:
             self.ui.setting_window.deiconify()
             self.ui.setting_window.focus_force()
 
     #appの再起動
     def reboot_app(self):
-        self.app.reboot_app(self.ui.debug)
+        self.app.reboot(self.ui.debug)
 
 
     def exit_app(self):
-        if self.app.engine_prosess is not None:
-            kill_server(self.app.engine_prosess)
+        if self.app.engine_process is not None:
+            kill_server(self.app.engine_process)
         self.ui.destroy()
 
 
@@ -99,10 +98,12 @@ class UI(tk.Tk):
         # --- ▲ フォント設定 ▲ ---
 
         self.talk_window = UI_talk.TalkWindow(self, self.app, self.setting, debug=debug); self.talk_window.withdraw()
-        self.setting_window = UI_settings.UI(self, self.setting); self.setting_window.withdraw()
+        self.setting_window = None
+        
         # メインウィンドウの設定
         self.title("デスクトップキャラクター")
-        self.attributes("-topmost", True)
+        if self.setting.get_setting_value("ApplicationSettings.CharacterImage.AlwaysOnTop"):
+            self.attributes("-topmost", True)
         self.overrideredirect(True) # ウィンドウのタイトルバーなどを非表示
         self.trans_color = "#888888"
         self.config(background=self.trans_color)
@@ -124,8 +125,6 @@ class UI(tk.Tk):
         # ContextMenuManagerのインスタンス化
         self.context_menu_manager = ContextMenuManager(app=self.app, ui =self)
         self.charaImg.bind("<Button-3>", self.context_menu_manager.show_menu)
-
-        
 
     #ユーザのメッセージ送信
     def _handle_user_message_send(self, message_from_input):

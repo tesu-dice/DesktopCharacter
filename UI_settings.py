@@ -24,7 +24,7 @@ class UI(tk.Toplevel):
     アプリケーションの設定オプションを表示・変更するためのトップレベルウィンドウ。
     設定データは再帰的にUIに表示され、ユーザーの入力に応じてリアルタイムで更新されます。
     """
-    def __init__(self, ui, settings: config_controller.UserSettings):
+    def __init__(self, ui, app, settings: config_controller.UserSettings):
         """
         UI_settingsウィンドウを初期化します。
         
@@ -34,18 +34,15 @@ class UI(tk.Toplevel):
             settings (config_controller.UserSettings): アプリケーション全体の設定を管理するオブジェクト。
                                                       このオブジェクトを通して設定値の取得と更新を行います。
         """
-        # TkinterのToplevelウィジェットとして初期化（独立したサブウィンドウを作成）
         super().__init__(ui)
         self.title("設定")  # ウィンドウのタイトルを設定
         self.geometry("500x600")  # ウィンドウの初期サイズを設定
         self.settings = settings  # UserSettingsオブジェクトをインスタンス変数として保持
         self.parent_ui = ui # 親UIへの参照を保持
+        self.app= app
 
         # ★変更点1: 一時的な設定データは不要になるため削除。代わりに、ウィジェットのVarを保持する辞書を初期化★
         self._widget_vars: dict[str, tk.Variable] = {} # {full_path: tk.Variable_instance}
-
-        # 削除ボタンの上書き（WM_DELETE_WINDOW プロトコルを上書き）
-        self.protocol("WM_DELETE_WINDOW", self.withdraw) 
 
         # --- 設定表示領域のためのフレームとスクロールバー付きのキャンバスの配置 ---
         # メインフレーム: ウィンドウ全体に広がり、CanvasとScrollbarを格納
@@ -78,7 +75,7 @@ class UI(tk.Toplevel):
 
         # --- 保存ボタンの配置 ---
         # ユーザーが変更を確定し、ウィンドウを閉じるためのボタン
-        save_button = ttk.Button(self, text="保存して閉じる", command=self.save_and_close)
+        save_button = ttk.Button(self, text="保存して再起動", command=self.save_and_close)
         save_button.pack(pady=10)
 
     def _on_frame_configure(self, event=None):
@@ -126,7 +123,9 @@ class UI(tk.Toplevel):
         if item_obj.item_type == "choice":
             # 選択肢がある場合（例: ドロップダウンリスト）
             var = tk.StringVar(value=initial_value) # 現在の値をStringVarにセット
-            if full_path == "ApplicationSettings.CharacterFolder":
+            if full_path == "ApplicationSettings.Model":
+                item_obj.options = self.app.ai.get_models()
+            if full_path == "ApplicationSettings.CharacterImage.Folder":
                 item_obj.options = get_CharacterFolders()
             elif full_path == "VoiceSettings.VOICEVOX.Model":
                 item_obj.options = talk_VoiceVoxEngine.get_speakers()
@@ -134,7 +133,6 @@ class UI(tk.Toplevel):
                 item_obj.options = talk_WindowsNarratorManager.get_SAPIVoice_names()
             combobox = ttk.Combobox(parent_widget_frame, textvariable=var, values=item_obj.options, state="readonly")
             combobox.grid(row=0, column=1, sticky="ew", padx=5)
-            # ★変更点: Comboboxの選択に対する trace_add を削除。値は保存時に取得する。
             self._widget_vars[full_path] = var # 変数を保存
 
         elif item_obj.item_type == "int":
@@ -142,7 +140,6 @@ class UI(tk.Toplevel):
             var = tk.StringVar(value=str(initial_value)) # 現在の値を文字列としてStringVarにセット
             entry = ttk.Entry(parent_widget_frame, textvariable=var)
             entry.grid(row=0, column=1, sticky="ew", padx=5)
-            # ★変更点: trace_add や FocusOut イベントバインディングを削除。保存時に値を取得し、バリデーションを行う。
             self._widget_vars[full_path] = var # 変数を保存
 
         elif item_obj.item_type == "str":
@@ -150,7 +147,6 @@ class UI(tk.Toplevel):
             var = tk.StringVar(value=initial_value)
             entry = ttk.Entry(parent_widget_frame, textvariable=var)
             entry.grid(row=0, column=1, sticky="ew", padx=5)
-            # ★変更点: trace_add や FocusOut イベントバインディングを削除。保存時に値を取得する。
             self._widget_vars[full_path] = var # 変数を保存
 
         elif item_obj.item_type == "bool":
@@ -167,7 +163,6 @@ class UI(tk.Toplevel):
             var.trace_add("write", lambda *args, v=var, cb=checkbutton: toggle_text_local(v, cb))
             # 初期表示時にテキストを正しく設定
             toggle_text_local(var, checkbutton)
-            # ★変更点: BooleanVarの変更に対する trace_add はテキスト表示のみ。値は保存時に取得する。
             self._widget_vars[full_path] = var # 変数を保存
 
         elif item_obj.item_type == "path":
@@ -191,7 +186,6 @@ class UI(tk.Toplevel):
 
             button = ttk.Button(parent_widget_frame, text="ファイルを選択", command=lambda p=full_path: select_file_path_and_update(var, _filetypes, p))
             button.grid(row=0, column=2, sticky="ew", padx=5)
-            # ★変更点: trace_add や FocusOut イベントバインディングを削除。保存時に値を取得する。
             self._widget_vars[full_path] = var # 変数を保存
             
         # 未対応のタイプが検出された場合
@@ -290,17 +284,13 @@ class UI(tk.Toplevel):
 
             # 更新された値を UserSettings にセット
             if self.settings.set_setting_value(path, new_value):
-                print(f"設定 '{path}' を '{new_value}' に更新しました。")
+                pass
             else:
                 print(f"設定 '{path}' を '{new_value}' に更新できませんでした。")
 
         # UserSettingsオブジェクトに保持されている現在の設定データをファイルに書き込む
-        config_controller.write_configfile(self.settings) 
-        
-        # 親のUIインスタンスに、設定が保存されたことを通知する
-        # ★read_configfileを呼び出すことで、UserSettingsオブジェクトがファイルから再ロードされ、
-        # アプリケーションの他の部分で最新の設定が利用可能になります。
-        self.parent_ui.app.setting = config_controller.read_configfile("config.json")
+        config_controller.write_configfile(self.settings)
+        self.master.app.reboot(self.master.debug)
         
         self.withdraw() # 設定ウィンドウを閉じる
 
