@@ -88,7 +88,8 @@ class geminiAI():
                     "threshold": "BLOCK_NONE"
                 }
             ]
-            self.model = genai.GenerativeModel(model_name = 'gemini-2.0-flash',#'gemini-2.0-pro-exp'上限ついた。5/15
+            selected_model = usersetting.get_setting_value("ApplicationSettings.Model")
+            self.model = genai.GenerativeModel(model_name = selected_model,#'gemini-2.0-pro-exp'上限ついた。5/15
                                         generation_config= generation_config,
                                         safety_settings=safety_settings)
             #会話履歴を作成
@@ -105,11 +106,15 @@ class geminiAI():
         
         
         #googleAIの種類を羅列
-        def check_models(self):
+        def get_models(self):
             #モデルの種類確認
+            names = []
             for m in genai.list_models():
                 if "generateContent" in m.supported_generation_methods:
-                    print(m.name)
+                    name = m.name.split("/")[-1]
+                    print(name)
+                    names.append(name)
+            return names
         
         #入力文字列をAIに送信、返答を返す。
         def response(self, input_text, debug=-1):
@@ -141,7 +146,7 @@ class geminiAI():
             thread.daemon = True
             thread.start()
             print("thread main keeped")
-            return response.text
+            return response.text, response.usage_metadata.total_token_count
 
         
         # 会話ログ表示用の関数

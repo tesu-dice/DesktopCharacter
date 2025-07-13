@@ -282,6 +282,16 @@ def get_default_data() -> Dict[str, Any]:
                     "type": "str",
                     "value": ""
                 },
+                "Model": {
+                    "name": "geminiのモデル選択",
+                    "type": "choice",
+                    "value": "gemini-2.0-flash-lite"
+                },
+                "ShowMetadatas":{
+                    "name":"会話のメタデータを非表示(未実装)",
+                    "type":"bool",
+                    "value":False
+                },
                 "CharacterImage":{
                     "name":"キャラクターの立ち絵",
                     "type":"section",
