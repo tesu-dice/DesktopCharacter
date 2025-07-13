@@ -106,14 +106,15 @@ class geminiAI():
         
         
         #googleAIの種類を羅列
-        def get_models(self):
+        def get_models(self, debug = -1):
             #モデルの種類確認
             names = []
             for m in genai.list_models():
                 if "generateContent" in m.supported_generation_methods:
                     name = m.name.split("/")[-1]
-                    print(name)
                     names.append(name)
+            if debug >= 0:
+                print(names)
             return names
         
         #入力文字列をAIに送信、返答を返す。

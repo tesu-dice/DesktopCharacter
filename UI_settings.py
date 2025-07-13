@@ -284,7 +284,7 @@ class UI(tk.Toplevel):
 
             # 更新された値を UserSettings にセット
             if self.settings.set_setting_value(path, new_value):
-                print(f"設定 '{path}' を '{new_value}' に更新しました。")
+                pass
             else:
                 print(f"設定 '{path}' を '{new_value}' に更新できませんでした。")
 

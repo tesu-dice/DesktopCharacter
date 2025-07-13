@@ -110,8 +110,8 @@ class myapp():
         #入力と返答をアプリ側へ反映
         self.add_talkhistory("user",send_text, debug=debug)
         self.add_talkhistory("model",response_text, debug=debug)
+        #メタデータ表示ONならトークン数を表示
         if self.setting.get_setting_value("ApplicationSettings.ShowMetadatas") == True:
-            print("ーーーーーートークン数を表示します。ーーーーーー")
             self.ui.talk_window.add_log_text("利用したトークン数：" + str(token), debug=debug)
 
     def add_talkhistory(self,type, text, debug = -1):
