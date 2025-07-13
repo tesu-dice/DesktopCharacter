@@ -51,7 +51,7 @@ class charaimg_controller():
 
 class CharacterLabel(tk.Label):
     """キャラクター画像を表示するためのフレーム（ラベル/ボタン）です。"""
-    def __init__(self, master, click_callback, setting:UserSettings):
+    def __init__(self, master, click_callback, setting:UserSettings, debug = -1):
         super().__init__(master)
         self.config(background=self.master.cget("background"))
         self.config(activebackground=self.master.cget("background"))
@@ -61,9 +61,16 @@ class CharacterLabel(tk.Label):
         _size = self.setting.get_setting_value("ApplicationSettings.CharacterImage.Size")
         self.character_image_manager = charaimg_controller(win_h=_size, win_w=_size, setting=self.setting)
         self._init_image()
-        self.place( x=self.master.winfo_screenwidth()/4*3 + abs(get_TotalMonitorSize()[2]),
+        self.place( x=self.master.winfo_screenwidth()/2 + abs(get_TotalMonitorSize()[2]),
                     y=self.master.winfo_screenheight()/2 + abs(get_TotalMonitorSize()[3])
                     )
+        if debug >=  0:
+            indent = "  " * debug
+            print(f"{indent}CharacterLabel.__init__() called.")
+            print(f"{indent}CharaImageSize = {_size}")
+            
+            debug = debug + 1 if debug >= 0 else -1
+           
 
     #ラベルの画像を初期化
     def _init_image(self):
