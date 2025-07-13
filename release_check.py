@@ -10,7 +10,6 @@ import sys
 現在のリリースバージョンの定義、
 githubのリリースを作成するときにおけるtagの部分。
 """
-CURRENT_APP_VERSION = "v0.0.1"#現在のバージョンの値、ここが最新と異なるかどうかをチェックする。
 
 #githubの所有者とリポジトリ名から最新リリースバージョンを取得する関数
 def get_latest_github_release_version(owner, repo):
@@ -72,6 +71,6 @@ if __name__ == "__main__":
         print("pip install requests を実行してインストールしてください。", file=sys.stderr)
         sys.exit(1)
 
-    result = check_nowver_is_newestver(test_owner, test_repo, CURRENT_APP_VERSION)
+    result = check_nowver_is_newestver(test_owner, test_repo, "test_version")
     print(f"チェック結果それぞれのタイプ:", type(result[0]), type(result[1]), type(result[2]))
     print(f"チェック結果: {result[0]}, 最新バージョン: {result[1]}, 現在のバージョン: {result[2]}")
