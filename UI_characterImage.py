@@ -32,7 +32,7 @@ class charaimg_controller():
         
     #キャラクター画像の読み取り
     def load_imgs(self):
-        dir_path = f"立ち絵/{self.setting.get_setting_value('ApplicationSettings.CharacterFolder')}/"
+        dir_path = f"立ち絵/{self.setting.get_setting_value('ApplicationSettings.CharacterImage.Folder')}/"
         files = os.listdir(dir_path)
         #画像の名前と画像を適正サイズに変更して保存
         for f in files :
@@ -40,7 +40,7 @@ class charaimg_controller():
             # 画像サイズを調整 (必要に応じて)
             image = image.resize((int(image.width *(self.win_h / image.height)), int(image.height *(self.win_h / image.height)) ))
             #画像の左右反転
-            if self.setting.get_setting_value("ApplicationSettings.ImgFlip"):
+            if self.setting.get_setting_value("ApplicationSettings.CharacterImage.Flip"):
                 image = image.transpose(FLIP_LEFT_RIGHT)
             image = ImageTk.PhotoImage(image)
             
@@ -58,7 +58,7 @@ class CharacterLabel(tk.Label):
         self.click_callback = click_callback
         self.setting = setting
         
-        _size = self.setting.get_setting_value("ApplicationSettings.CharacterSize")
+        _size = self.setting.get_setting_value("ApplicationSettings.CharacterImage.Size")
         self.character_image_manager = charaimg_controller(win_h=_size, win_w=_size, setting=self.setting)
         self._init_image()
         self.place( x=self.master.winfo_screenwidth()/4*3 + abs(get_TotalMonitorSize()[2]),

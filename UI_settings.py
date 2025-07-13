@@ -122,7 +122,7 @@ class UI(tk.Toplevel):
         if item_obj.item_type == "choice":
             # 選択肢がある場合（例: ドロップダウンリスト）
             var = tk.StringVar(value=initial_value) # 現在の値をStringVarにセット
-            if full_path == "ApplicationSettings.CharacterFolder":
+            if full_path == "ApplicationSettings.CharacterImage.Folder":
                 item_obj.options = get_CharacterFolders()
             elif full_path == "VoiceSettings.VOICEVOX.Model":
                 item_obj.options = talk_VoiceVoxEngine.get_speakers()

@@ -99,7 +99,7 @@ class UI(tk.Tk):
         self.setting_window = UI_settings.UI(self, self.setting); self.setting_window.withdraw()
         # メインウィンドウの設定
         self.title("デスクトップキャラクター")
-        if self.setting.get_setting_value("ApplicationSettings.AlwaysOnTop"):
+        if self.setting.get_setting_value("ApplicationSettings.CharacterImage.AlwaysOnTop"):
             self.attributes("-topmost", True)
         self.overrideredirect(True) # ウィンドウのタイトルバーなどを非表示
         self.trans_color = "#888888"
