@@ -277,6 +277,11 @@ def get_default_data() -> Dict[str, Any]:
             "name": "アプリケーション設定",
             "type": "section",
             "children": {
+                "FontSize": {
+                    "name": "フォントサイズ",
+                    "type": "int",
+                    "value": 15
+                },
                 "geminiAPIkey": {
                     "name": "geminiAPIkey",
                     "type": "str",
