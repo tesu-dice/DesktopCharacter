@@ -7,7 +7,7 @@ import os
 
 #プログラム
 import UI_main
-import geminiAPI
+import AI_geminiAPI
 import WindowsInfoCollecter
 import config_controller
 from talk_VoiceVoxEngine import start_server
@@ -58,7 +58,7 @@ class myapp():
         #各要素の起動
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.setting, debug=debug)
         
-        self.ai = geminiAPI.geminiAI(self.setting, self, debug=debug)
+        self.ai = AI_geminiAPI.geminiAI(self.setting, self, debug=debug)
         self.ui = UI_main.UI(self, self.setting, debug=debug)
 
         #geminiAPIの接続確認

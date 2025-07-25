@@ -132,8 +132,9 @@ class geminiAI():
 
             input_content = [{"role": "user", "parts":[input_text]}]
             #送信するコンテンツの選別
-            if len(self.app.TalkHistory) > 7:
-                past_contets = self.init_prompt + self.app.TalkHistory[-5:]
+            active_history_num = 4
+            if len(self.app.TalkHistory) > active_history_num:
+                past_contets = self.init_prompt + self.app.TalkHistory[-active_history_num:]
             else:
                 past_contets = self.init_prompt + self.app.TalkHistory
             contents = past_contets + input_content
