@@ -8,6 +8,7 @@ import os
 #プログラム
 import UI_main
 import AI_geminiAPI
+import AI_ollama
 import WindowsInfoCollecter
 import config_controller
 from talk_VoiceVoxEngine import start_server
@@ -59,6 +60,8 @@ class myapp():
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.setting, debug=debug)
         
         self.ai = AI_geminiAPI.geminiAI(self.setting, self, debug=debug)
+        self.ai = AI_ollama.ollamaAI(self.setting, self, debug=debug)
+        
         self.ui = UI_main.UI(self, self.setting, debug=debug)
 
         #geminiAPIの接続確認
@@ -83,6 +86,7 @@ class myapp():
 
     #アプリケーションの再起動
     def reboot(self, debug = -1):
+        self.ui.after_cancel(self.update_id)
         self.ui.destroy()
         # start_app に状態を引き継いで再起動
         start_app(engine_process=self.engine_process, TalkHistory=self.TalkHistory, debug=debug)
@@ -98,7 +102,7 @@ class myapp():
         if self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.on/off") == True:    
             if self.WinInfo.check_freetime():
                 self.SendMessage_toAI("[System] ユーザー作業中...", debug=debug)
-        self.ui.after(10000, self.update)
+        self.update_id = self.ui.after(10000, self.update, debug)
 
     #入力テキストをAIに伝え、UIにログを追加
     def SendMessage_toAI(self, text, debug = -1):

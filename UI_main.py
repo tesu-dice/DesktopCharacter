@@ -108,8 +108,6 @@ class UI(tk.Tk):
         self.trans_color = "#888888"
         self.config(background=self.trans_color)
         self.attributes("-transparentcolor", self.trans_color)
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
         monitors_data = get_TotalMonitorSize()
 
         self.geometry(f"{monitors_data[0]}x{monitors_data[1]}+{monitors_data[2]}+{monitors_data[3]}") # すべての範囲に収まるように取得
@@ -125,6 +123,19 @@ class UI(tk.Tk):
         # ContextMenuManagerのインスタンス化
         self.context_menu_manager = ContextMenuManager(app=self.app, ui =self)
         self.charaImg.bind("<Button-3>", self.context_menu_manager.show_menu)
+
+        #ウィンドウの初期位置を再度定義
+        self.after(10, self.Refresh_windowPos)
+
+    #ウィンドウの位置を初期化する（__init__内でやると場合によって初期位置がずれる。）
+    def Refresh_windowPos(self):
+        monitors_data = get_TotalMonitorSize()
+        self.withdraw()
+        self.geometry(f"{monitors_data[0]}x{monitors_data[1]}+{monitors_data[2]}+{monitors_data[3]}") # すべての範囲に収まるように取得
+        self.deiconify()
+    
+
+
 
     #ユーザのメッセージ送信
     def _handle_user_message_send(self, message_from_input):
