@@ -130,7 +130,7 @@ class UI(tk.Tk):
     #ウィンドウの位置を初期化する（__init__内でやると場合によって初期位置がずれる。）
     def Refresh_windowPos(self):
         monitors_data = get_TotalMonitorSize()
-        self.withdraw()
+        self.withdraw()#透明ウィンドウで初期位置が今回のプログラム構成のように特殊だと位置をOS側で設定される。一度非表示にして位置調整可能にしてから調整。
         self.geometry(f"{monitors_data[0]}x{monitors_data[1]}+{monitors_data[2]}+{monitors_data[3]}") # すべての範囲に収まるように取得
         self.deiconify()
     
