@@ -7,8 +7,7 @@ import os
 
 #プログラム
 import UI_main
-import AI_geminiAPI
-import AI_ollama
+import AI_main
 import WindowsInfoCollecter
 import config_controller
 from talk_VoiceVoxEngine import start_server
@@ -19,11 +18,8 @@ class myapp():
     def __init__(self, engine_process = None, TalkHistory = [], debug = -1):
         #初期化
         self.engine_process = engine_process
-        self.TalkHistory = TalkHistory
         _start_info_texts ="" # 起動メッセージ用テキスト
         _start_info_error ="" # 起動エラーメッセージ用テキスト
-        
-            
         
         #デバックフラグの管理
         if debug > -1:
@@ -59,15 +55,14 @@ class myapp():
         #各要素の起動
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.setting, debug=debug)
         
-        self.ai = AI_geminiAPI.geminiAI(self.setting, self, debug=debug)
-        self.ai = AI_ollama.ollamaAI(self.setting, self, debug=debug)
+        self.AI_Manager = AI_main.AI_Manager(self, self.setting, TalkHistory, debug=debug)
         
         self.ui = UI_main.UI(self, self.setting, debug=debug)
 
-        #geminiAPIの接続確認
-        if self.setting.get_setting_value("ApplicationSettings.geminiAPIkey") != "":
-            _start_info_texts += f"---GeminiAPIの接続確認---\n"
-            _result = self.ai.test_connection(debug=debug)
+        #AIサービスとの接続確認
+        if self.setting.get_setting_value("LLMSettings.Service") != "未選択":
+            _start_info_texts += f"---AIサービスとの接続確認---\n"
+            _result = self.AI_Manager.test_connection(debug=debug)
             _start_info_texts += f"{('成功' if _result[0] else '失敗')}\n\n"
             if _result[0] == False:
                 _start_info_error += f"GeminiAPIの接続に失敗しました。:\n{_result[1]}\n\n"
@@ -89,7 +84,7 @@ class myapp():
         self.ui.after_cancel(self.update_id)
         self.ui.destroy()
         # start_app に状態を引き継いで再起動
-        start_app(engine_process=self.engine_process, TalkHistory=self.TalkHistory, debug=debug)
+        start_app(engine_process=self.engine_process, TalkHistory=self.AI_Manager.history, debug=debug)
     
     #状態監視の実行
     def update(self, debug = -1):
@@ -114,24 +109,15 @@ class myapp():
         if self.setting.get_setting_value("ApplicationSettings.Permisson.PlayingMedia") == True:
             m = "再生中のメディア：" + self.WinInfo.get_plaing_media(debug = debug + 1 if debug >= 0 else -1) + "\n"
         send_text = text + "\n"+ t + w + m 
-        response_text, token = self.ai.response(send_text, debug=debug)
+        response_text, token = self.AI_Manager.response(send_text, debug=debug)
         #入力と返答をアプリ側へ反映
-        self.add_talkhistory("user",send_text, debug=debug)
-        self.add_talkhistory("model",response_text, debug=debug)
+        self.AI_Manager.add_talkhistory("user",send_text, debug=debug)
+        self.AI_Manager.add_talkhistory("model",response_text, debug=debug)
         #メタデータ表示ONならトークン数を表示
         if self.setting.get_setting_value("ApplicationSettings.ShowMetadatas") == True:
             self.ui.talk_window.add_log_text("利用したトークン数：" + str(token)+ "\n", debug=debug)
 
-    def add_talkhistory(self,type, text, debug = -1):
-        newhistory = {"role": f"{type}", "parts":[text]}
-        self.TalkHistory.append(newhistory)
-        #トークウィンドウがあればテキストを追加
-        if self.ui.talk_window and self.ui.talk_window.winfo_exists():
-            if debug > -1:
-                indent = "  " * debug
-                print(f"{indent}main.py add_talkhistory() called.")
-                debug +=1
-            self.ui.talk_window.add_log(newhistory)
+
 
 def start_app(engine_process = None, TalkHistory = [], debug = -1):
     """

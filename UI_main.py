@@ -80,25 +80,19 @@ class UI(tk.Tk):
         self.setting = setting
 
         # --- ▼ フォント設定 ▼ ---
-        # configからフォントサイズを読み込み
-        font_size = self.setting.get_setting_value("ApplicationSettings.FontSize")
+        font_size = self.setting.get_setting_value("ApplicationSettings.FontSize")# configからフォントサイズを読み込み
         if not isinstance(font_size, int):
-            font_size = 10 # 読み込み失敗時のデフォルトフォントサイズ
-
+            font_size = 15 # 読み込み失敗時のデフォルトフォントサイズ
         font_family = "Yu Gothic UI" # Windowsで推奨されるUIフォント
         default_font = (font_family, font_size)
+            # 標準tkウィジェットとttkウィジェットの両方にフォントを一括で適用
+        self.option_add("*Font", default_font)# 標準tkウィジェット用 
+        style = ttk.Style(self)# ttkウィジェット用  
+        style.configure(".", font=default_font, padding=2)# "." は全てのttkウィジェットの基本スタイル
 
-        # 標準tkウィジェットとttkウィジェットの両方にフォントを一括で適用
-        # 標準tkウィジェット用
-        self.option_add("*Font", default_font)
-        # ttkウィジェット用
-        style = ttk.Style(self)
-        # "." は全てのttkウィジェットの基本スタイル
-        style.configure(".", font=default_font, padding=2)
-        # --- ▲ フォント設定 ▲ ---
-
+        #各ウィンドウの初期化
         self.talk_window = UI_talk.TalkWindow(self, self.app, self.setting, debug=debug);   self.talk_window.withdraw()
-        self.setting_window = UI_settings.UI(self, self.app, self.setting);    self.setting_window.withdraw()
+        self.setting_window = None
         
         # メインウィンドウの設定
         self.title("デスクトップキャラクター")
