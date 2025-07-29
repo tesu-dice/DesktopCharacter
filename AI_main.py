@@ -95,10 +95,15 @@ class AI_Manager():
             print(f"{indent}TalkHistory = {self.history}")
             debug = debug + 1
 
-
     def add_talkhistory(self,type, text, debug = -1):
         newhistory = {"role": f"{type}", "parts":[text]}
         self.history.append(newhistory)
+        
+        #会話が長くなりすぎたら削除
+        max_history_length = 100
+        if len(self.history) > max_history_length:
+            self.history = self.history[-max_history_length:]
+
         #トークウィンドウがあればテキストを追加
         if self.app.ui.talk_window and self.app.ui.talk_window.winfo_exists():
             if debug > -1:
@@ -140,7 +145,8 @@ class AI_Manager():
         else:
             past_contents = self.history
         #返答の生成
-        response = self.ai.response(self.init_prompt + past_contents, debug)
+        response = self.ai.response(input_contents=self.init_prompt + past_contents, debug = debug)
+        self.add_talkhistory("model", response["text"], debug)
         print(response)
         #threadを使った並列音声読み上げ処理
         thread = threading.Thread(target=self.Reflecting_textResponsestoUI, args=(response["text"], debug))
@@ -193,4 +199,5 @@ class AI_Manager():
         return self.ai.test_connection(debug)
 
 if __name__ == "__main__":
+    print("AI_main.pyは単体テストできません。")
     pass

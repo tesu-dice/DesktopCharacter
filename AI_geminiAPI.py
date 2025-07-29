@@ -74,16 +74,6 @@ class geminiAI():
             self.model = genai.GenerativeModel(model_name = selected_model,#'gemini-2.0-pro-exp'上限ついた。5/15
                                         generation_config= generation_config,
                                         safety_settings=safety_settings)
-            
-        #キャラクター画像を読み込み、AIへ指示書として返す。
-        def load_imgs(self, dir_name):
-            import os
-            dir_path = f"立ち絵/{dir_name}"
-            files = os.listdir(dir_path)
-            text = str(files)
-            return text
-            
-        
         
         #googleAIの種類を羅列
         def get_models(self, debug = -1):
@@ -140,33 +130,6 @@ class geminiAI():
             print("-----------------------------\n")
         
         
-        def Reflecting_textResponsestoUI(self, texts, debug=-1):
-            #テキストを読み上げモード別に読み上げる
-            mode = self.usersetting.get_setting_value("VoiceSettings.engine")
-            for text in texts.split("\n"):
-                if text == "":
-                    break
-                if text.find("："):
-                    self.app.ui.update_character_image(text.split("：")[0])
-                    text = text.split("：")[-1]
-
-                
-                if(debug >= 0):
-                    indent = "  " * debug
-                    print(f"{indent}geminiAPI.py speech_text() was called.",mode, text)
-                    debug = debug + 1
-                if(mode == "None"):
-                    return
-                elif(mode == "WindowsNarrator"):
-                    model_description = self.usersetting.get_setting_value("VoiceSettings.windowsNarrator.Model")
-                    talk_WindowsNarratorManager.text_to_speech(text, model_description, debug=debug)
-                elif(mode == "VOICEVOX"):
-                    chosen_value = self.usersetting.get_setting_value("VoiceSettings.VOICEVOX.Model")
-                    id = str(chosen_value).split("=")[-1]
-                    talk_VoiceVoxEngine.text_to_speech(text, int(id), debug=debug)
-                else:
-                    self.app.show_message_box("エラー", f"音声読み上げにおいて対応していない読み上げモードが選択されています。{mode}")
-                    
         #API接続のテストプログラム
         def test_connection(self, debug=-1) -> tuple[bool, str]:
             """

@@ -388,7 +388,7 @@ def get_default_data() -> Dict[str, Any]:
                         "URL": {
                             "name": "APIのURL",
                             "type": "str",
-                            "value": "http://localhost:11434/api"
+                            "value": "http://localhost:11434"
                         },
                         "model":{
                             "name": "モデル",
