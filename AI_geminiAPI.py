@@ -28,7 +28,7 @@ class geminiAI():
             self.app = app
             self.usersetting = usersetting
 
-            yourAPIkey = usersetting.get_setting_value("ApplicationSettings.geminiAPIkey")#APIkeyの設定
+            yourAPIkey = usersetting.get_setting_value("LLMSettings.geminiAPI.key")#APIkeyの設定
             if debug >= 0:
                 indent = "  " * debug
                 print(f"{indent}geminiAPI.__init__() called.")
@@ -38,25 +38,7 @@ class geminiAI():
             
             genai.configure(api_key=yourAPIkey)
 
-            #会話設定
-            base_prompt =   "あなたはユーザのPC上で動作するキャラクターです。以下の応答規則、キャラクター設定に従って受け答えをしてください。\n" \
-                            "#応答規則\n" \
-                            "セリフはキャラクターとして会話するように応答し、文章量は最大で3文程度としてください。\n" \
-                            "立ち絵ファイル名は下に示されたのみとし、セリフと合わせて適切なものを選択してください。\n" \
-                            "###応答例（立ち絵ファイル名：セリフ）\n"\
-                            "平穏.png：おはようございます。\n" \
-                            "笑顔.tiff：今日もいい天気ですね。\n" \
-                            "期待.png：今日も一日頑張りましょう。\n"\
-                            "###立ち絵ファイル名\n"
             
-            base_prompt += self.load_imgs(dir_name=usersetting.get_setting_value("ApplicationSettings.CharacterImage.Folder"))+"\n#キャラクター設定\n"
-            f= open("Character_setting.txt", encoding="utf-8")
-            Character_set_text=""
-            for line in f:
-                line.strip("\n")
-                Character_set_text +=line
-            
-            f.close()
         
 
             
@@ -88,22 +70,10 @@ class geminiAI():
                     "threshold": "BLOCK_NONE"
                 }
             ]
-            selected_model = usersetting.get_setting_value("ApplicationSettings.Model")
+            selected_model = usersetting.get_setting_value("LLMSettings.geminiAPI.model")
             self.model = genai.GenerativeModel(model_name = selected_model,#'gemini-2.0-pro-exp'上限ついた。5/15
                                         generation_config= generation_config,
                                         safety_settings=safety_settings)
-            #会話履歴を作成
-            self.init_prompt= [{"role": "user", "parts":[base_prompt + Character_set_text]},({"role": "model", "parts":["了解しました。"]})]
-            
-        #キャラクター画像を読み込み、AIへ指示書として返す。
-        def load_imgs(self, dir_name):
-            import os
-            dir_path = f"立ち絵/{dir_name}"
-            files = os.listdir(dir_path)
-            text = str(files)
-            return text
-            
-        
         
         #googleAIの種類を羅列
         def get_models(self, debug = -1):
@@ -120,37 +90,21 @@ class geminiAI():
             return names
         
         #入力文字列をAIに送信、返答を返す。
-        def response(self, input_text, debug=-1):
+        def response(self, input_contents, debug=-1):
             if debug >= 0:
                 indent = "  " * debug
-                print(f"{indent}geminiAPI.py response() was called.",input_text)
-                if(input_text == "<<show histroy>>"):
-                    self.view_conversation_log()
-                
-                print(f"{indent}self.app.TalkHistory = {self.app.TalkHistory}")
+                print(f"{indent}geminiAPI.py response() was called.")
                 debug = debug + 1
 
-            input_content = [{"role": "user", "parts":[input_text]}]
             #送信するコンテンツの選別
-            active_history_num = 4
-            if len(self.app.TalkHistory) > active_history_num:
-                past_contets = self.init_prompt + self.app.TalkHistory[-active_history_num:]
-            else:
-                past_contets = self.init_prompt + self.app.TalkHistory
-            contents = past_contets + input_content
-            
             #会話とその記録
-            response = self.model.generate_content(contents=contents)
+            response = self.model.generate_content(contents=input_contents)
             print(response.text)
             print(response.usage_metadata)
+            response_dict = {"text": response.text, "token_count": response.usage_metadata.total_token_count}
             
-            #
-            #threadを使って音声処理を並列化
-            thread = threading.Thread(target=self.Reflecting_textResponsestoUI, args=(response.text, debug))
-            thread.daemon = True
-            thread.start()
-            print("thread main keeped")
-            return response.text, response.usage_metadata.total_token_count
+            
+            return response_dict
 
         
         # 会話ログ表示用の関数
@@ -176,33 +130,6 @@ class geminiAI():
             print("-----------------------------\n")
         
         
-        def Reflecting_textResponsestoUI(self, texts, debug=-1):
-            #テキストを読み上げモード別に読み上げる
-            mode = self.usersetting.get_setting_value("VoiceSettings.engine")
-            for text in texts.split("\n"):
-                if text == "":
-                    break
-                if text.find("："):
-                    self.app.ui.update_character_image(text.split("：")[0])
-                    text = text.split("：")[-1]
-
-                
-                if(debug >= 0):
-                    indent = "  " * debug
-                    print(f"{indent}geminiAPI.py speech_text() was called.",mode, text)
-                    debug = debug + 1
-                if(mode == "None"):
-                    return
-                elif(mode == "WindowsNarrator"):
-                    model_description = self.usersetting.get_setting_value("VoiceSettings.windowsNarrator.Model")
-                    talk_WindowsNarratorManager.text_to_speech(text, model_description, debug=debug)
-                elif(mode == "VOICEVOX"):
-                    chosen_value = self.usersetting.get_setting_value("VoiceSettings.VOICEVOX.Model")
-                    id = str(chosen_value).split("=")[-1]
-                    talk_VoiceVoxEngine.text_to_speech(text, int(id), debug=debug)
-                else:
-                    self.app.show_message_box("エラー", f"音声読み上げにおいて対応していない読み上げモードが選択されています。{mode}")
-                    
         #API接続のテストプログラム
         def test_connection(self, debug=-1) -> tuple[bool, str]:
             """

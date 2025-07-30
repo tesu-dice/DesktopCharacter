@@ -9,11 +9,11 @@
 import tkinter as tk
 import tkinter.filedialog
 from tkinter import ttk  # スタイル付きウィジェットのため
-import json  # object型を文字列として編集するために使用 (JSON文字列との相互変換)
-import copy  # ディープコピーのために追加
 
 # プログラム同士のインポート（これらは外部ファイルとして存在し、設定UIから利用される）
 import config_controller # 設定ファイルの読み書きや、設定値の管理を行うモジュール
+import AI_geminiAPI
+import AI_ollama
 import talk_VoiceVoxEngine # VoiceVoxエンジンのスピーカーリストなどを取得するために使用
 import talk_WindowsNarratorManager # Windowsナレーターの音声モデルなどを取得するために使用
 from main import get_CharacterFolders # mainモジュールからget_CharacterFoldersをインポート
@@ -36,7 +36,7 @@ class UI(tk.Toplevel):
         """
         super().__init__(ui)
         self.title("設定")  # ウィンドウのタイトルを設定
-        self.geometry("500x600")  # ウィンドウの初期サイズを設定
+        self.geometry("1000x700")  # ウィンドウの初期サイズを設定
         self.settings = settings  # UserSettingsオブジェクトをインスタンス変数として保持
         self.parent_ui = ui # 親UIへの参照を保持
         self.app= app
@@ -125,7 +125,7 @@ class UI(tk.Toplevel):
             # 選択肢がある場合（例: ドロップダウンリスト）
             var = tk.StringVar(value=initial_value) # 現在の値をStringVarにセット
             if full_path == "ApplicationSettings.Model":
-                item_obj.options = self.app.ai.get_models()
+                item_obj.options = self.app.AI_Manager.get_models()
             if full_path == "ApplicationSettings.CharacterImage.Folder":
                 item_obj.options = get_CharacterFolders()
             elif full_path == "VoiceSettings.VOICEVOX.Model":
@@ -138,6 +138,107 @@ class UI(tk.Toplevel):
             combobox = ttk.Combobox(parent_widget_frame, textvariable=var, values=item_obj.options, state="readonly")
             combobox.grid(row=0, column=1, sticky="ew", padx=5)
             self._widget_vars[full_path] = var # 変数を保存
+
+        # 関数で更新可能なコンボボックス
+        elif item_obj.item_type == "choice_with_func":
+            # ボタンとコンボボックスを格納するためのコンテナフレーム
+            widget_container = ttk.Frame(parent_widget_frame)
+            widget_container.grid(row=0, column=1, sticky="ew")
+            # コンテナ内の列設定: column 0 はボタン用、column 1 はコンボボックス用で伸縮
+            widget_container.columnconfigure(1, weight=1)
+
+            # 初期メッセージとStringVar
+            initial_message = "ボタンを押して項目を表示してください。"
+            var = tk.StringVar(value=initial_value) # 現在の値をStringVarにセット
+            self._widget_vars[full_path] = var
+
+            # コンボボックスの作成
+            combobox = ttk.Combobox(
+                widget_container,
+                textvariable=var,
+                values=[initial_message],
+                state="readonly"
+            )
+            combobox.grid(row=0, column=1, sticky="ew", padx=(5, 0)) # ボタンの右に配置
+
+            # ボタンのコマンド関数
+            def update_options():
+                try:
+                    # どの関数を呼び出すかを full_path に基づいて決定します。
+                    # このアプローチは、既存の 'choice' タイプの実装スタイルを踏襲しています。
+                    func_to_call = None
+
+                    # --- ここに、パスと関数のマッピングを記述します ---
+                        #キャラクターフォルダの選択
+                    if full_path == "ApplicationSettings.CharacterImage.Folder":
+                        func_to_call = get_CharacterFolders
+                        #AIの選択
+                    elif full_path == "LLMSettings.geminiAPI.model":
+                        gemini = AI_geminiAPI.geminiAI(self.app.setting, None, debug=-1)
+                        func_to_call = gemini.get_models
+                    elif full_path == "LLMSettings.Ollama.model":
+                        ollama = AI_ollama.ollamaAI(self.app.setting, None, debug=-1)
+                        func_to_call = ollama.get_models
+
+                        #音声モデルの選択
+                    elif full_path == "VoiceSettings.VOICEVOX.Model":
+                        if self.app.engine_process is not None:
+                            func_to_call = talk_VoiceVoxEngine.get_speakers
+                        else:
+                            # サーバーが起動していない場合は、その旨を表示して終了
+                            combobox['values'] = ["サーバを起動していません。"]
+                            var.set("サーバを起動していません。")
+                            return
+                    elif full_path == "VoiceSettings.windowsNarrator.Model":
+                        func_to_call = talk_WindowsNarratorManager.get_SAPIVoice_names
+                    
+                    
+                    # 他のパスと関数のマッピングをここに追加できます
+                    # elif full_path == "some.other.path":
+                    #     func_to_call = some_other_function
+                    
+                    if func_to_call is None:
+                        raise NotImplementedError(f"No function is mapped for path '{full_path}' with type 'choice_with_func'")
+                    
+                    # 関数を実行してオプションを取得
+                    new_options = func_to_call()
+
+                    if new_options and isinstance(new_options, (list, tuple)):
+                        combobox['values'] = new_options
+                        current_value = var.get()
+                        # 更新後も同じ値があればそれを維持、なければ先頭を選択
+                        if current_value in new_options:
+                            var.set(current_value)
+                        else:
+                            var.set(new_options[0])
+                    elif not new_options:
+                        no_items_msg = "項目が見つかりませんでした"
+                        combobox['values'] = [no_items_msg]
+                        var.set(no_items_msg)
+                    else:
+                        raise TypeError(f"Function for '{full_path}' did not return a list or tuple.")
+                
+                except Exception as e:
+                    error_msg = "未設定"
+                    print(f"Error updating options for '{full_path}': {e}")
+                    combobox['values'] = [error_msg]
+                    var.set(error_msg)
+
+            # ボタンの作成
+            update_button = ttk.Button(
+                widget_container,
+                text="選択肢の更新",
+                command=update_options
+            )
+            update_button.grid(row=0, column=0)
+
+
+
+
+
+
+
+
 
         elif item_obj.item_type == "int":
             # 整数値の入力フィールド
@@ -194,7 +295,7 @@ class UI(tk.Toplevel):
             
         # 未対応のタイプが検出された場合
         else:
-            print("未対応のタイプが検出されました。", item_obj.item_type, full_path)
+            print("対応のタイプが検出されました。", item_obj.item_type, full_path)
             ttk.Label(parent_widget_frame, text=f"Unsupported type: {item_obj.item_type}").grid(row=0, column=1, sticky="w", padx=5)
 
     def add_settings_to_frame(self, parent_frame, config_node_dict, current_path_parts):

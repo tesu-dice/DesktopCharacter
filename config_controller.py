@@ -21,12 +21,12 @@ class SettingItem:
             name: 項目の名前
             path: 設定へのドット区切りパス (例: "audioSettings.windowsNarrator.voiceModel").
             value: 設定の現在の値.
-            item_type: 設定の型 ("choice", "integer", "string", "boolean", "object").
+            item_type: 設定の型 ("choice", "choice_with_func", "int", "string", "boolean", "object").
             raw_item_data: この設定項目に対応する元のJSONノードのデータ.
             description: 設定の人間可読な説明 (JSON の "name" フィールドから).
             options: 利用可能な選択肢のリスト ("choice" 型の場合).
             value_range: min/max 制約を指定する辞書.
-                         "integer" の場合: {"min": int, "max": int}.
+                         "int" の場合: {"min": int, "max": int}.
                          "object" の場合: {"min": dict, "max": dict} (サブプロパティの制約).
         """
         self.name: str = name
@@ -158,6 +158,11 @@ class UserSettings:
             if item.options and new_value not in item.options:
                 print(f"警告: '{path}' の値 '{new_value}' は選択肢 {item.options} にありません。")
                 return False
+        
+        if item.item_type == "choice_with_func":
+            if new_value == "未選択" or new_value == "未設定":
+                print("項目が未選択のためデフォルトの値を参照します。")
+                return False
         elif item.item_type == "int":
             if not isinstance(new_value, int):
                 print(f"警告: '{path}' の値 '{new_value}' は整数ではありません。")
@@ -282,16 +287,6 @@ def get_default_data() -> Dict[str, Any]:
                     "type": "int",
                     "value": 15
                 },
-                "geminiAPIkey": {
-                    "name": "geminiAPIkey",
-                    "type": "str",
-                    "value": ""
-                },
-                "Model": {
-                    "name": "geminiのモデル選択",
-                    "type": "choice",
-                    "value": "gemini-2.0-flash-lite"
-                },
                 "ShowMetadatas":{
                     "name":"会話のメタデータを表示(調整中)",
                     "type":"bool",
@@ -303,7 +298,7 @@ def get_default_data() -> Dict[str, Any]:
                     "children":{
                         "Folder": {
                             "name": "参照する立ち絵フォルダ",
-                            "type": "choice",
+                            "type": "choice_with_func",
                             "value": "CHARAT-MONO"
                         },
                         "Size": {
@@ -355,17 +350,56 @@ def get_default_data() -> Dict[str, Any]:
                         }
                     }
                 }
-            },
-            "ActiveSpeak": {
-                "on/off": True,
-                "Time": 100
-            },
-            "Permisson": {
-                "ActiveWindow": True,
-                "PlayingMedia": True
-            },
-            "FontSize": 20
+            }
         },
+        "LLMSettings": {
+            "name": "会話AIについての設定",
+            "type": "section",
+            "children":{
+                "Service": {
+                    "name": "LLMサービスの選択",
+                    "type": "choice",
+                    "value": "未選択",
+                    "options": [
+                        "geminiAPI",
+                        "Ollama"
+                    ]
+                },
+                "geminiAPI": {
+                    "name": "GeminiAPI",
+                    "type": "section",
+                    "children":{
+                        "key": {
+                            "name": "APIキー",
+                            "type": "str",
+                            "value": ""
+                        },
+                        "model":{
+                            "name": "モデル",
+                            "type": "choice_with_func",
+                            "value": "未選択"
+                        }
+                    }
+                },
+                "Ollama": {
+                    "name": "OllamaAPI",
+                    "type": "section",
+                    "children":{
+                        "URL": {
+                            "name": "APIのURL",
+                            "type": "str",
+                            "value": "http://localhost:11434"
+                        },
+                        "model":{
+                            "name": "モデル",
+                            "type": "choice_with_func",
+                            "value": "未選択"
+                        }
+                    }
+                }
+            }
+        },
+
         "VoiceSettings": {
             "name": "音声設定",
             "type": "section",
@@ -386,7 +420,7 @@ def get_default_data() -> Dict[str, Any]:
                     "children": {
                         "Model": {
                             "name": "音声モデル",
-                            "type": "choice",
+                            "type": "choice_with_func",
                             "value": "Microsoft Sayaka - Japanese (Japan)",
                             "options": []
                         }
@@ -412,9 +446,9 @@ def get_default_data() -> Dict[str, Any]:
                             "value": False
                         },
                         "Model": {
-                            "type": "choice",
+                            "type": "choice_with_func",
                             "name": "音声モデル",
-                            "value": "未設定",
+                            "value": "未選択",
                             "options": []
                         }
                     }

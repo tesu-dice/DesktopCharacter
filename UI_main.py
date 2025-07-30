@@ -80,25 +80,19 @@ class UI(tk.Tk):
         self.setting = setting
 
         # --- ▼ フォント設定 ▼ ---
-        # configからフォントサイズを読み込み
-        font_size = self.setting.get_setting_value("ApplicationSettings.FontSize")
+        font_size = self.setting.get_setting_value("ApplicationSettings.FontSize")# configからフォントサイズを読み込み
         if not isinstance(font_size, int):
-            font_size = 10 # 読み込み失敗時のデフォルトフォントサイズ
-
+            font_size = 15 # 読み込み失敗時のデフォルトフォントサイズ
         font_family = "Yu Gothic UI" # Windowsで推奨されるUIフォント
         default_font = (font_family, font_size)
+            # 標準tkウィジェットとttkウィジェットの両方にフォントを一括で適用
+        self.option_add("*Font", default_font)# 標準tkウィジェット用 
+        style = ttk.Style(self)# ttkウィジェット用  
+        style.configure(".", font=default_font, padding=2)# "." は全てのttkウィジェットの基本スタイル
 
-        # 標準tkウィジェットとttkウィジェットの両方にフォントを一括で適用
-        # 標準tkウィジェット用
-        self.option_add("*Font", default_font)
-        # ttkウィジェット用
-        style = ttk.Style(self)
-        # "." は全てのttkウィジェットの基本スタイル
-        style.configure(".", font=default_font, padding=2)
-        # --- ▲ フォント設定 ▲ ---
-
+        #各ウィンドウの初期化
         self.talk_window = UI_talk.TalkWindow(self, self.app, self.setting, debug=debug);   self.talk_window.withdraw()
-        self.setting_window = UI_settings.UI(self, self.app, self.setting);    self.setting_window.withdraw()
+        self.setting_window = None
         
         # メインウィンドウの設定
         self.title("デスクトップキャラクター")
@@ -108,8 +102,6 @@ class UI(tk.Tk):
         self.trans_color = "#888888"
         self.config(background=self.trans_color)
         self.attributes("-transparentcolor", self.trans_color)
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
         monitors_data = get_TotalMonitorSize()
 
         self.geometry(f"{monitors_data[0]}x{monitors_data[1]}+{monitors_data[2]}+{monitors_data[3]}") # すべての範囲に収まるように取得
@@ -125,6 +117,19 @@ class UI(tk.Tk):
         # ContextMenuManagerのインスタンス化
         self.context_menu_manager = ContextMenuManager(app=self.app, ui =self)
         self.charaImg.bind("<Button-3>", self.context_menu_manager.show_menu)
+
+        #ウィンドウの初期位置を再度定義
+        self.after(10, self.Refresh_windowPos)
+
+    #ウィンドウの位置を初期化する（__init__内でやると場合によって初期位置がずれる。）
+    def Refresh_windowPos(self):
+        monitors_data = get_TotalMonitorSize()
+        self.withdraw()#透明ウィンドウで初期位置が今回のプログラム構成のように特殊だと位置をOS側で設定される。一度非表示にして位置調整可能にしてから調整。
+        self.geometry(f"{monitors_data[0]}x{monitors_data[1]}+{monitors_data[2]}+{monitors_data[3]}") # すべての範囲に収まるように取得
+        self.deiconify()
+    
+
+
 
     #ユーザのメッセージ送信
     def _handle_user_message_send(self, message_from_input):
