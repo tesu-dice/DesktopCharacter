@@ -4,6 +4,7 @@
 """
 #ライブラリ
 import os
+import threading
 
 #プログラム
 import UI_main
@@ -99,7 +100,7 @@ class myapp():
                 self.SendMessage_toAI("[System] ユーザー作業中...", debug=debug)
         self.update_id = self.ui.after(10000, self.update, debug)
 
-    #入力テキストをAIに伝え、UIにログを追加
+    #入力テキストをAIに伝える
     def SendMessage_toAI(self, text, debug = -1):
         #会話送信テキストの準備と送信
         t, w, m = "", "", ""
@@ -110,10 +111,9 @@ class myapp():
         if self.setting.get_setting_value("ApplicationSettings.Permisson.PlayingMedia") == True:
             m = "再生中のメディア：" + self.WinInfo.get_plaing_media(debug = debug + 1 if debug >= 0 else -1) + "\n"
         send_text = text + "\n"+ t + w + m 
-        response_text, token = self.AI_Manager.response(send_text, debug=debug)
-        #メタデータ表示ONならトークン数を表示
-        if self.setting.get_setting_value("ApplicationSettings.ShowMetadatas") == True:
-            self.ui.talk_window.add_log_text("利用したトークン数：" + str(token)+ "\n", debug=debug)
+        thread = threading.Thread(target=self.AI_Manager.response, args=(send_text, debug))
+        thread.daemon = True
+        thread.start()
 
 
 
