@@ -110,9 +110,6 @@ class myapp():
             m = "再生中のメディア：" + self.WinInfo.get_plaing_media(debug = debug + 1 if debug >= 0 else -1) + "\n"
         send_text = text + "\n"+ t + w + m 
         response_text, token = self.AI_Manager.response(send_text, debug=debug)
-        #入力と返答をアプリ側へ反映
-        self.AI_Manager.add_talkhistory("user",send_text, debug=debug)
-        self.AI_Manager.add_talkhistory("model",response_text, debug=debug)
         #メタデータ表示ONならトークン数を表示
         if self.setting.get_setting_value("ApplicationSettings.ShowMetadatas") == True:
             self.ui.talk_window.add_log_text("利用したトークン数：" + str(token)+ "\n", debug=debug)

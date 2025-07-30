@@ -137,9 +137,8 @@ class AI_Manager():
             return {"text": "AIサービスが選択されていません。", "token_count": 0}
         
         #送信する会話履歴の処理
-        newhistory = {"role": "user", "parts":[input_text]}
-        self.history.append(newhistory)
-        active_history_num = 4
+        self.add_talkhistory("user", input_text, debug)
+        active_history_num = 10
         if len(self.history) > active_history_num:
             past_contents = self.history[-active_history_num:]
         else:
