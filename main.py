@@ -103,7 +103,8 @@ class myapp():
     def SendMessage_toAI(self, text, debug = -1):
         #会話送信テキストの準備と送信
         t, w, m = "", "", ""
-        t = "現在時刻：" + self.WinInfo.get_datetime() + "\n"
+        if self.setting.get_setting_value("ApplicationSettings.Permisson.CurrentTime") == True:
+            t = "現在時刻：" + self.WinInfo.get_datetime() + "\n"
         if self.setting.get_setting_value("ApplicationSettings.Permisson.ActiveWindow") == True:
             w = "アクティブなウィンドウ：" + self.WinInfo.get_activate_window() + "\n"
         if self.setting.get_setting_value("ApplicationSettings.Permisson.PlayingMedia") == True:

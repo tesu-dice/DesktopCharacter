@@ -45,9 +45,9 @@ class AI_Manager():
         self.history = TalkHistory
         self.debug = debug
 
-        #設定を読み取ってサービスに合わせたAIを定義
+        #設定を読み取った初期化
+        self.active_history_num = self.usersetting.get_setting_value("LLMSettings.ActiveHistory")*2 #送信と返答の2組セット
         self.LLM_Service = self.usersetting.get_setting_value("LLMSettings.Service")
-        print(f"AI_main.py AI_Manager.__init__() LLLMService = {self.LLM_Service}")
         if self.LLM_Service == "未選択":
             self.ai = None
         elif self.LLM_Service == "geminiAPI":
@@ -138,9 +138,8 @@ class AI_Manager():
         
         #送信する会話履歴の処理
         self.add_talkhistory("user", input_text, debug)
-        active_history_num = 10
-        if len(self.history) > active_history_num:
-            past_contents = self.history[-active_history_num:]
+        if len(self.history) > self.active_history_num:
+            past_contents = self.history[-self.active_history_num:]
         else:
             past_contents = self.history
         #返答の生成

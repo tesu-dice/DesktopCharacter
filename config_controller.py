@@ -338,6 +338,11 @@ def get_default_data() -> Dict[str, Any]:
                     "name": "アプリでの利用を許可する項目",
                     "type": "section",
                     "children": {
+                        "CurrentTime":{
+                            "name": "現在時刻",
+                            "type": "bool",
+                            "value": True
+                        },
                         "ActiveWindow": {
                             "name": "作業中のウィンドウ",
                             "type": "bool",
@@ -364,6 +369,11 @@ def get_default_data() -> Dict[str, Any]:
                         "geminiAPI",
                         "Ollama"
                     ]
+                },
+                "ActiveHistory":{
+                    "name":"会話で使う履歴の数",
+                    "type":"int",
+                    "value": 10
                 },
                 "geminiAPI": {
                     "name": "GeminiAPI",
