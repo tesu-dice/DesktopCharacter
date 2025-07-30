@@ -146,12 +146,13 @@ class AI_Manager():
         response = self.ai.response(input_contents=self.init_prompt + past_contents, debug = debug)
         self.add_talkhistory("model", response["text"], debug)
         print(response)
+        #メタデータ表示ONならトークン数を表示
+        if self.usersetting.get_setting_value("ApplicationSettings.ShowMetadatas") == True:
+            self.app.ui.talk_window.add_log_text("利用したトークン数：" + str(response["token_count"])+ "\n", debug=debug)
         #threadを使った並列音声読み上げ処理
         thread = threading.Thread(target=self.Reflecting_textResponsestoUI, args=(response["text"], debug))
         thread.daemon = True
         thread.start()
-        print("thread main keeped")
-        return response["text"], response["token_count"]
         
     # テキスト応答をUIに反映・読み上げ (geminiAPI.py と同じロジック)
     def Reflecting_textResponsestoUI(self, texts, debug=-1):
