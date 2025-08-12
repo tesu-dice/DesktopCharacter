@@ -6,7 +6,7 @@ from tkinter import ttk
 import json # object型を文字列として編集するために使用
 
 # プログラム同士のインポート
-import config_controller
+from services import config_controller
 
 class TalkWindow(tk.Toplevel):
     """ログ表示とユーザー入力のための Toplevel ウィンドウです。"""

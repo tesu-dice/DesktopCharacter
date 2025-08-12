@@ -29,11 +29,11 @@ True/Falseで接続、strで詳細なメッセージを返す。
 import os
 import threading
 #プログラム間でのやりとり
-import AI_geminiAPI
-import AI_ollama
-import talk_WindowsNarratorManager
-import talk_VoiceVoxEngine
-from config_controller import UserSettings
+from ai import AI_geminiAPI
+from ai import AI_ollama
+from tts import talk_WindowsNarratorManager
+from tts import talk_VoiceVoxEngine
+from services.config_controller import UserSettings
 
 
 

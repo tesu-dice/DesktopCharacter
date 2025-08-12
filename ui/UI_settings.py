@@ -11,11 +11,11 @@ import tkinter.filedialog
 from tkinter import ttk  # スタイル付きウィジェットのため
 
 # プログラム同士のインポート（これらは外部ファイルとして存在し、設定UIから利用される）
-import config_controller # 設定ファイルの読み書きや、設定値の管理を行うモジュール
-import AI_geminiAPI
-import AI_ollama
-import talk_VoiceVoxEngine # VoiceVoxエンジンのスピーカーリストなどを取得するために使用
-import talk_WindowsNarratorManager # Windowsナレーターの音声モデルなどを取得するために使用
+from services import config_controller # 設定ファイルの読み書きや、設定値の管理を行うモジュール
+from ai import AI_geminiAPI
+from ai import AI_ollama
+from tts import talk_VoiceVoxEngine # VoiceVoxエンジンのスピーカーリストなどを取得するために使用
+from tts import talk_WindowsNarratorManager # Windowsナレーターの音声モデルなどを取得するために使用
 from main import get_CharacterFolders # mainモジュールからget_CharacterFoldersをインポート
 
 # 設定オプションのUIを管理するクラス

@@ -15,8 +15,8 @@ import tkinter as tk
 import random
 from PIL.Image import FLIP_LEFT_RIGHT 
 #プログラムのインポート
-from config_controller import UserSettings
-from WindowsInfoCollecter import get_TotalMonitorSize
+from services.config_controller import UserSettings
+from services.WindowsInfoCollecter import get_TotalMonitorSize
 
 
 #キャラクター画像を管理するクラス

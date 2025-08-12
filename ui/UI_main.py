@@ -11,13 +11,13 @@ from tkinter import messagebox
 import os
 import random  # 初期立ち絵をランダムに設定するため
 # プログラム同士のやり取り
-from config_controller import UserSettings
-from talk_VoiceVoxEngine import kill_server
-import UI_characterImage
-from WindowsInfoCollecter import get_TotalMonitorSize
-import UI_settings
+from services.config_controller import UserSettings
+from tts.talk_VoiceVoxEngine import kill_server
+from ui import UI_characterImage
+from services.WindowsInfoCollecter import get_TotalMonitorSize
+from ui import UI_settings
 
-import UI_talk # UI_talk モジュールをインポート
+from ui import UI_talk # UI_talk モジュールをインポート
 
 
 #左クリック時のメニューバーの管理

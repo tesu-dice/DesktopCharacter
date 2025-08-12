@@ -7,12 +7,12 @@ import os
 import threading
 
 #プログラム
-import UI_main
-import AI_main
-import WindowsInfoCollecter
-import config_controller
-from talk_VoiceVoxEngine import start_server
-from release_check import check_nowver_is_newestver
+from ui import UI_main
+from ai import AI_main
+from services import WindowsInfoCollecter
+from services import config_controller
+from services.release_check import check_nowver_is_newestver
+from tts.talk_VoiceVoxEngine import start_server
 
 
 class myapp():

@@ -17,7 +17,7 @@ from winrt.windows.media.control import (
 )
 
 #プログラム間でのインポート
-from config_controller import UserSettings
+from services.config_controller import UserSettings
 
 
 class win_info_collector():

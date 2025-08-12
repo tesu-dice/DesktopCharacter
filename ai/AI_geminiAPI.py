@@ -16,9 +16,9 @@ from google.api_core import exceptions
 import threading
 
 #プログラムの読み込み
-import talk_VoiceVoxEngine
-import talk_WindowsNarratorManager 
-from config_controller import UserSettings
+from tts import talk_VoiceVoxEngine
+from tts import talk_WindowsNarratorManager 
+from services.config_controller import UserSettings
 
 
 
