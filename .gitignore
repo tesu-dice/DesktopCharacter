@@ -1,8 +1,8 @@
 #git ignore file
 **__pycache__**
 **立ち絵**
-myAPI.txt
+**diary**
 Character_setting.txt
 config.json
-GoogleCalendarAPI.json
-token.json
+client_secret.json
+oauth_token.json
