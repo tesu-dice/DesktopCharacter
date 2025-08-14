@@ -97,7 +97,7 @@ class myapp():
         
         if self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.on/off") == True:    
             if self.WinInfo.check_freetime():
-                self.SendMessage_toAI("[System] ユーザー作業中...", debug=debug)
+                self.SendMessage_toAI("ユーザー作業中...", debug=debug)
         self.update_id = self.ui.after(10000, self.update, debug)
 
     #入力テキストをAIに伝える
@@ -105,12 +105,12 @@ class myapp():
         #会話送信テキストの準備と送信
         t, w, m = "", "", ""
         if self.setting.get_setting_value("ApplicationSettings.Permisson.CurrentTime") == True:
-            t = "現在時刻：" + self.WinInfo.get_datetime() + "\n"
+            t = "\n現在時刻：" + self.WinInfo.get_datetime()
         if self.setting.get_setting_value("ApplicationSettings.Permisson.ActiveWindow") == True:
-            w = "アクティブなウィンドウ：" + self.WinInfo.get_activate_window() + "\n"
+            w = "\nアクティブなウィンドウ：" + self.WinInfo.get_activate_window()
         if self.setting.get_setting_value("ApplicationSettings.Permisson.PlayingMedia") == True:
-            m = "再生中のメディア：" + self.WinInfo.get_plaing_media(debug = debug + 1 if debug >= 0 else -1) + "\n"
-        send_text = text + "\n"+ t + w + m 
+            m = "\n再生中のメディア：" + self.WinInfo.get_plaing_media(debug = debug + 1 if debug >= 0 else -1) 
+        send_text = text + t + w + m 
         thread = threading.Thread(target=self.AI_Manager.response, args=(send_text, debug))
         thread.daemon = True
         thread.start()

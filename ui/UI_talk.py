@@ -74,9 +74,13 @@ class TalkWindow(tk.Toplevel):
         """ログ表示エリアにメッセージを追加します。"""
         message = str(talkhistory.get("parts")[0])
         if talkhistory.get("role") == "user":
-            message = f"入力:{message}"
+            message = f"[ 入力 ]\n{message}\n"
         elif talkhistory.get("role") == "model":
-            message = f">>>\n{message}\n"
+            message = f"[ 出力 ]\n{message}\n"
+            #メタデータ表示ONならトークン数を表示
+            if self.setting.get_setting_value("ApplicationSettings.ShowMetadatas") == True:
+                message += "利用したトークン数：" + str(talkhistory["token_count"])+ "\n"
+        message += "\n"
 
         if message:
             self.message_text.configure(state="normal")
@@ -87,7 +91,7 @@ class TalkWindow(tk.Toplevel):
     def add_log_text(self, message, debug = -1):
         if message:
             self.message_text.configure(state="normal")
-            self.message_text.insert("end", message)
+            self.message_text.insert("end", message+"\n")
             self.message_text.see("end")
             self.message_text.configure(state="disabled")
 

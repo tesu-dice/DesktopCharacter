@@ -107,19 +107,20 @@ async def _get_media_info(debug = -1) -> str:
     try:
         media_manager = await MediaManager.request_async()
         current_session = media_manager.get_current_session()
-        media_properties: MediaProperties = await current_session.try_get_media_properties_async()
-        if media_properties:
-            media_title = media_properties.title if media_properties.title else '[情報なし]'
-            media_artist = media_properties.artist if media_properties.artist else '[情報なし]'
-        playback_info: PlaybackInfo = current_session.get_playback_info()
-        if playback_info:
-            media_state = PlaybackStatus(playback_info.playback_status).name 
+        if current_session != None:
+            media_properties: MediaProperties = await current_session.try_get_media_properties_async()
+            if media_properties:
+                media_title = media_properties.title if media_properties.title else '[情報なし]'
+                media_artist = media_properties.artist if media_properties.artist else '[情報なし]'
+            playback_info: PlaybackInfo = current_session.get_playback_info()
+            if playback_info:
+                media_state = PlaybackStatus(playback_info.playback_status).name 
+        else:
+            media_state = "取得失敗"
+            media_title = "取得失敗"
+            media_artist = "取得失敗"
     except Exception as e:
         print(f"WindowsMediaの取得に失敗しました。エラー:\n   {e}")
-        media_state = "取得失敗"
-        media_title = "取得失敗"
-        media_artist = "取得失敗"
-    
     if debug >= 0:
         indent = "  " * debug
         print(f"{indent}WindowsInfoCollector._get_media_info() called.")
