@@ -5,7 +5,8 @@
 #ライブラリ
 import os
 import threading
-
+import logging
+import sys
 #プログラム
 from ui import UI_main
 from ai import AI_main
@@ -19,6 +20,7 @@ from tts.talk_VoiceVoxEngine import start_server
 class myapp():
     def __init__(self, engine_process = None, TalkHistory = [], debug = -1):
         #初期化
+        _setup_logging_info()
         self.engine_process = engine_process
         _start_info_texts ="" # 起動メッセージ用テキスト
         _start_info_error ="" # 起動エラーメッセージ用テキスト
@@ -137,6 +139,39 @@ def get_CharacterFolders(debug=-1):
 #EventBusにおける購読処理の初期化
 def _setup_event_listeners(self):
     pass
+
+#Loggingの初期化
+def _setup_logging_info():
+    # loggingの基本設定を行う
+    """
+    level=logging.DEBUG:
+    DEBUGに設定しておくと、全てのレベルのログが記録されるので、開発中はこれが便利です。
+        DEBUG: 開発中に見る詳細な情報
+        INFO: 正常な動作の記録（「アプリが起動した」「応答を生成した」など）
+        WARNING: すぐには問題ないが、注意が必要なこと（「設定ファイルの一部が古い」など）
+        ERROR: 処理が続行できないような重大なエラー
+    """
+    #ログの基本設定
+    logging.basicConfig(
+        level=logging.INFO,  # DEBUGレベル以上のログをすべて記録する
+        format='%(asctime)s - %(levelname)s - [%(name)s] %(message)s',
+        filename='application.log', # ログをこのファイルに出力する
+        encoding='utf-8',
+        filemode='w' # 起動時にファイルを上書き（'a'にすると追記）
+    )
+    
+    #自分のモジュールは個別で設定する。
+    logging.getLogger('ai').setLevel(logging.DEBUG)
+    logging.getLogger("collectors").setLevel(logging.DEBUG)
+    logging.getLogger("services").setLevel(logging.DEBUG)
+    logging.getLogger("tts").setLevel(logging.DEBUG)
+    logging.getLogger("ui").setLevel(logging.DEBUG)
+    
+    
+
+
+    logging.info("ロギングの設定が完了しました。アプリケーションを起動します。")
+    
 
 
 if __name__ =="__main__":

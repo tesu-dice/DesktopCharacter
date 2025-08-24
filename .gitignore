@@ -6,3 +6,4 @@ Character_setting.txt
 config.json
 client_secret.json
 oauth_token.json
+application.log

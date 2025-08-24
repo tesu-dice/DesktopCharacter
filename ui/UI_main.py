@@ -10,6 +10,9 @@ from tkinter import ttk  # スタイル付きウィジェットのため
 from tkinter import messagebox
 import os
 import random  # 初期立ち絵をランダムに設定するため
+import logging
+logger = logging.getLogger(__name__)
+
 # プログラム同士のやり取り
 from services.config_controller import UserSettings
 from tts.talk_VoiceVoxEngine import kill_server
@@ -69,9 +72,9 @@ class UI(tk.Tk):
         super().__init__()
         #デバックの処理
         self.debug = debug
+        logger.info("初期化を開始します。")
         if debug >= 0:
             indent = "  " * debug
-            print(f"{indent}UI.py __init__() called.")
             UI.show_message_box("info", "デバックメッセージ", "UI_main.py show_message_box()の動作確認です。")
             debug = debug + 1 if debug >= 0 else -1
             
@@ -120,6 +123,7 @@ class UI(tk.Tk):
 
         #ウィンドウの初期位置を再度定義
         self.after(10, self.Refresh_windowPos)
+        logger.debug("初期化が完了しました。")
 
     #ウィンドウの位置を初期化する（__init__内でやると場合によって初期位置がずれる。）
     def Refresh_windowPos(self):
