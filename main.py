@@ -11,6 +11,7 @@ from ui import UI_main
 from ai import AI_main
 from services import WindowsInfoCollecter
 from services import config_controller
+from services.Event_Bus import EventBus
 from services.release_check import check_nowver_is_newestver
 from tts.talk_VoiceVoxEngine import start_server
 
@@ -133,7 +134,9 @@ def get_CharacterFolders(debug=-1):
         print(f"{indent}loaded files = {files}")
     return files
 
-
+#EventBusにおける購読処理の初期化
+def _setup_event_listeners(self):
+    pass
 
 
 if __name__ =="__main__":
