@@ -14,8 +14,8 @@ from tkinter import ttk  # スタイル付きウィジェットのため
 from services import config_controller # 設定ファイルの読み書きや、設定値の管理を行うモジュール
 from ai import AI_geminiAPI
 from ai import AI_ollama
-from tts import talk_VoiceVoxEngine # VoiceVoxエンジンのスピーカーリストなどを取得するために使用
-from tts import talk_WindowsNarratorManager # Windowsナレーターの音声モデルなどを取得するために使用
+from ui import tts_VoiceVoxEngine # VoiceVoxエンジンのスピーカーリストなどを取得するために使用
+from ui import tts_WindowsNarratorManager # Windowsナレーターの音声モデルなどを取得するために使用
 from main import get_CharacterFolders # mainモジュールからget_CharacterFoldersをインポート
 
 # 設定オプションのUIを管理するクラス

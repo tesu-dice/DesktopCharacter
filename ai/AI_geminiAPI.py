@@ -14,18 +14,17 @@ https://ai.google.dev/gemini-api/docs/quickstart?hl=ja&lang=python
 import google.generativeai as genai
 from google.api_core import exceptions
 import threading
+import logging
+logger = logging.getLogger(__name__)
 
 #プログラムの読み込み
-from tts import talk_VoiceVoxEngine
-from tts import talk_WindowsNarratorManager 
 from services.config_controller import UserSettings
 
 
 
 class geminiAI():
         #初期化
-        def __init__(self, usersetting:UserSettings, app, debug = -1):
-            self.app = app
+        def __init__(self, usersetting:UserSettings, debug = -1):
             self.usersetting = usersetting
 
             yourAPIkey = usersetting.get_setting_value("LLMSettings.geminiAPI.key")#APIkeyの設定
@@ -105,29 +104,6 @@ class geminiAI():
             
             
             return response_dict
-
-        
-        # 会話ログ表示用の関数
-        def view_conversation_log(self):
-            print("\n--- Full Conversation Log ---")
-            if not self.app.TalkHistory:
-                print("  Log is empty.")
-            for message in self.app.TalkHistory:
-                role = message.get("role", "Unknown Role")
-                content = ""
-                if "parts" in message and message["parts"]:
-                    # partsがリストであることを想定し、最初の要素のテキスト部分を取得
-                    if isinstance(message["parts"][0], str):
-                        content = message["parts"][0]
-                    elif hasattr(message["parts"][0], 'text'): # Partオブジェクトの場合など
-                        content = message["parts"][0].text
-                
-                # 表示を見やすくするために、内容を100文字に丸め、改行をスペースに置換
-                display_content = content.replace('\n', ' ').replace('\r', '')
-                if len(display_content) > 100:
-                    display_content = display_content[:97] + "..."
-                print(f"  {role}: \"{display_content}\"")
-            print("-----------------------------\n")
         
         
         #API接続のテストプログラム

@@ -6,9 +6,6 @@ from PIL import Image
 import threading
 
 # プログラムのインポート
-# config_controller は外部ファイルのため、このコード単体では実行できません。
-# from config_controller import UserSettings
-
 
 # 画像を生成AIに渡す形に成形
 def encode_image_to_base64(image_path: str):
@@ -30,9 +27,8 @@ class ollamaAI():
     Ollama APIを介してローカルLLMと会話するためのクラス。
     GeminiAPIクラスを参考にしてOllama向けに調整。
     """
-    def __init__(self, usersetting, app, debug: int = -1): # UserSettingsの型ヒントを削除 (外部依存のため)
+    def __init__(self, usersetting, debug: int = -1): # UserSettingsの型ヒントを削除 (外部依存のため)
         # 初期化
-        self.app = app
         self.usersetting = usersetting
         self.debug = debug
         # 初期化読み取り

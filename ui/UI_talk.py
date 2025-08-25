@@ -55,8 +55,9 @@ class TalkWindow(tk.Toplevel):
         self.message_text["yscrollcommand"] = self.bar_vertical_scroll.set
 
         #会話履歴があればそれを表示
-        for l in self.app.AI_Manager.history:
-            self.add_log(l)
+        print("ここで過去の会話履歴を表示数動作があります。これは初期化後にAI_mainのほうで過去履歴を発見したイベントが発行されてから処理するのでコメントアウトします。")
+        # for l in self.app.AI_Manager.history:
+        #     self.add_log(l)
         #Xボタンで破棄しないように設定
         self.protocol("WM_DELETE_WINDOW", self.withdraw)
         

@@ -6,7 +6,6 @@ Windowsからデータを取得して受け渡す用のクラス
 import time
 import datetime
 import asyncio
-import threading
 import win32gui #pip install pywin32
 from screeninfo import get_monitors
 from winrt.windows.media.control import (
@@ -18,12 +17,14 @@ from winrt.windows.media.control import (
 
 #プログラム間でのインポート
 from services.config_controller import UserSettings
+from services.Event_Bus import EventBus
 
 
 class win_info_collector():
-    def __init__(self, UserSetting :UserSettings, debug = -1):
+    def __init__(self, _bus:EventBus, UserSetting :UserSettings, debug = -1):
         self.time_init = datetime.datetime.now()
         self.time_last = datetime.datetime.now()
+        self.bus = _bus
         self.usersetting = UserSetting
         if debug >= 0:
             indent = "  " * debug

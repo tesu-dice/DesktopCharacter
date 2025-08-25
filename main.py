@@ -6,15 +6,15 @@
 import os
 import threading
 import logging
-import sys
 #プログラム
-from ui import UI_main
-from ai import AI_main
 from services import WindowsInfoCollecter
 from services import config_controller
-from services.Event_Bus import EventBus
+from services import Event_Bus
+from ui import UI_main
+from ai import AI_main
 from services.release_check import check_nowver_is_newestver
-from tts.talk_VoiceVoxEngine import start_server
+from ui.tts_VoiceVoxEngine import start_server
+
 
 
 class myapp():
@@ -31,6 +31,26 @@ class myapp():
             print(f"{indent}main.py __init__() called.")
             debug = debug + 1 if debug >= 0 else -1
             
+            
+            
+        
+            
+        
+        
+
+        #各要素の起動
+            #シングルトンではないけどシングルトンのように扱う要素
+        self.setting = config_controller.read_configfile("config.json")#ユーザデータの読み込み
+        self.EvnetBus = Event_Bus.EventBus()
+            #各種サービス要素
+        self.WinInfo = WindowsInfoCollecter.win_info_collector(self.EvnetBus, self.setting, debug=debug)
+        self.AI_Manager = AI_main.AI_Manager(self.EvnetBus, self.setting, TalkHistory, debug=debug)
+        self.ui = UI_main.UI(self.EvnetBus, self.setting, debug=debug)
+        #イベントバスへの購読設定
+        self._setup_event_listeners()
+        
+        
+
         #リリースバージョンの確認
         CURRENT_APP_VERSION = "1.0.1" # 現在のバージョンを設定
         _result = check_nowver_is_newestver("tesu-dice", "DesktopCharacter_forRelease", CURRENT_APP_VERSION)
@@ -40,28 +60,8 @@ class myapp():
         else :
             print(f"お使いのバージョンは最新です。 最新バージョン: {_result[1]}, 現在のバージョン: {_result[2]}")
         _start_info_texts += f"---バージョン情報---\n{'最新です。' if _result[0] else '更新があります。'} [{_result[1]}] -> [{_result[2]}]\n\n"
-            
-            
-        #ユーザデータの読み込み
-        self.setting = config_controller.read_configfile("config.json")
-        if self.setting is None:
-            _start_info_error += f"設定ファイルの読み込みに失敗しました。\n"
-            
-        #VOICEVOXEngineの起動
-        if  self.engine_process == None and \
-            self.setting.get_setting_value("VoiceSettings.VOICEVOX.autorun") == True:
-            
-            self.engine_process = start_server(self.setting.get_setting_value("VoiceSettings.VOICEVOX.path"), self.setting.get_setting_value("VoiceSettings.VOICEVOX.usegpu"),debug=debug)
-            _start_info_texts += f"---VOICEVOXエンジンの起動---\n{('成功' if self.engine_process != False else '失敗')}\n\n"
-
         
 
-        #各要素の起動
-        self.WinInfo = WindowsInfoCollecter.win_info_collector(self.setting, debug=debug)
-        
-        self.AI_Manager = AI_main.AI_Manager(self, self.setting, TalkHistory, debug=debug)
-        
-        self.ui = UI_main.UI(self, self.setting, debug=debug)
 
         #AIサービスとの接続確認
         if self.setting.get_setting_value("LLMSettings.Service") != "未選択":
@@ -72,6 +72,13 @@ class myapp():
                 _start_info_error += f"GeminiAPIの接続に失敗しました。:\n{_result[1]}\n\n"
 
 
+        #VOICEVOXEngineの起動
+        if  self.engine_process == None and \
+            self.setting.get_setting_value("VoiceSettings.VOICEVOX.autorun") == True:
+            
+            self.engine_process = start_server(self.setting.get_setting_value("VoiceSettings.VOICEVOX.path"), self.setting.get_setting_value("VoiceSettings.VOICEVOX.usegpu"),debug=debug)
+            _start_info_texts += f"---VOICEVOXエンジンの起動---\n{('成功' if self.engine_process != False else '失敗')}\n\n"
+
 
         #起動メッセージ
         self.ui.show_message_box("info", "起動メッセージ", _start_info_texts)
@@ -80,8 +87,17 @@ class myapp():
             self.ui.show_message_box("info", "エラーメッセージ", _start_info_error)
         
         #アプリケーション動作開始
+        self.EvnetBus.publish("init_application", debug=debug)
         self.update(debug=debug)
         
+    #EventBusにおける購読処理の初期化
+    def _setup_event_listeners(self):
+        
+        
+        pass
+
+
+
 
     #アプリケーションの再起動
     def reboot(self, debug = -1):
@@ -120,6 +136,7 @@ class myapp():
 
 
 
+
 def start_app(engine_process = None, TalkHistory = [], debug = -1):
     """
     アプリケーションを起動する唯一の関数。
@@ -136,9 +153,7 @@ def get_CharacterFolders(debug=-1):
         print(f"{indent}loaded files = {files}")
     return files
 
-#EventBusにおける購読処理の初期化
-def _setup_event_listeners(self):
-    pass
+
 
 #Loggingの初期化
 def _setup_logging_info():
@@ -164,7 +179,6 @@ def _setup_logging_info():
     logging.getLogger('ai').setLevel(logging.DEBUG)
     logging.getLogger("collectors").setLevel(logging.DEBUG)
     logging.getLogger("services").setLevel(logging.DEBUG)
-    logging.getLogger("tts").setLevel(logging.DEBUG)
     logging.getLogger("ui").setLevel(logging.DEBUG)
     
     

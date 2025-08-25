@@ -28,20 +28,22 @@ True/Falseで接続、strで詳細なメッセージを返す。
 """
 import os
 import threading
+import logging
+logger = logging.getLogger(__name__)
+
 #プログラム間でのやりとり
 from ai import AI_geminiAPI
 from ai import AI_ollama
-from tts import talk_WindowsNarratorManager
-from tts import talk_VoiceVoxEngine
+from services.Event_Bus import EventBus
 from services.config_controller import UserSettings
 
 
 
 class AI_Manager():
-    def __init__(self, app, setting_:UserSettings, TalkHistory = [], debug = -1):
+    def __init__(self, _Bus:EventBus, _setting:UserSettings, TalkHistory = [], debug = -1):
         #初期化
-        self.app = app
-        self.usersetting = setting_
+        self.bus = _Bus
+        self.usersetting = _setting
         self.history = TalkHistory
         self.debug = debug
 
@@ -51,9 +53,9 @@ class AI_Manager():
         if self.LLM_Service == "未選択":
             self.ai = None
         elif self.LLM_Service == "geminiAPI":
-            self.ai = AI_geminiAPI.geminiAI(usersetting=self.usersetting, app=app, debug=debug)
+            self.ai = AI_geminiAPI.geminiAI(usersetting=self.usersetting, debug=debug)
         elif self.LLM_Service == "Ollama":
-            self.ai = AI_ollama.ollamaAI(usersetting=self.usersetting, app=app, debug=debug)
+            self.ai = AI_ollama.ollamaAI(usersetting=self.usersetting, debug=debug)
         else:
             self.ai = None
             print("--- error ---\nAI_main.py AI_Manager.__init__ で適切なサービスを見つけることができませんでした。")
@@ -146,6 +148,9 @@ class AI_Manager():
         response = self.ai.response(input_contents=self.init_prompt + past_contents, debug = debug)
         self.add_talkhistory("model", response["text"], debug)
         print(response)
+
+        #イベント発行
+        self.bus.publish("AI_response", response["text"])
         #threadを使った並列音声読み上げ処理
         thread = threading.Thread(target=self.Reflecting_textResponsestoUI, args=(response["text"], debug))
         thread.daemon = True
@@ -153,6 +158,7 @@ class AI_Manager():
         
     # テキスト応答をUIに反映・読み上げ (geminiAPI.py と同じロジック)
     def Reflecting_textResponsestoUI(self, texts, debug=-1):
+        print(f"この部分はEventBusを使った発行後、他クラスによって実行予定。AI_main.py Reflecting_textResponsestoUI() called.")
         mode = self.usersetting.get_setting_value("VoiceSettings.engine")
         for text in texts.split("\n"):
             if text == "":
@@ -170,6 +176,7 @@ class AI_Manager():
                 return
             elif(mode == "WindowsNarrator"):
                 model_description = self.usersetting.get_setting_value("VoiceSettings.windowsNarrator.Model")
+                
                 talk_WindowsNarratorManager.text_to_speech(text, model_description, debug=debug)
             elif(mode == "VOICEVOX"):
                 chosen_value = self.usersetting.get_setting_value("VoiceSettings.VOICEVOX.Model")

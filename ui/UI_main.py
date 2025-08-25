@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 # プログラム同士のやり取り
 from services.config_controller import UserSettings
-from tts.talk_VoiceVoxEngine import kill_server
+from ui import tts_VoiceVoxEngine
+from ui import tts_WindowsNarratorManager
 from ui import UI_characterImage
 from services.WindowsInfoCollecter import get_TotalMonitorSize
 from ui import UI_settings
