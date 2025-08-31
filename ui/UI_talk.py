@@ -3,14 +3,17 @@
 """
 import tkinter as tk
 from tkinter import ttk
-import json # object型を文字列として編集するために使用
+import logging
+logger = logging.getLogger(__name__)
 
 # プログラム同士のインポート
-from services import config_controller
+from services.config_controller import UserSettings
+from services.Event_Bus import EventBus
+
 
 class TalkWindow(tk.Toplevel):
     """ログ表示とユーザー入力のための Toplevel ウィンドウです。"""
-    def __init__(self, master, app, setting: config_controller.UserSettings, debug=-1):
+    def __init__(self, master, bus:EventBus, setting: UserSettings, debug=-1):
         # Toplevelとしての初期化
         super().__init__(master)
         self.title("会話")
@@ -18,7 +21,7 @@ class TalkWindow(tk.Toplevel):
         self.geometry(f"{500}x{400}")
         # self.geometry(f"{setting.get_setting_value('otherSettings.textWindowSize.width')}x{setting.get_setting_value('otherSettings.textWindowSize.height')}") # 設定ファイルから読み込む場合
         self.debug = debug # デバッグレベルをインスタンス変数として保持
-        self.app = app
+        self.bus = bus
         self.setting = setting
 
         
@@ -66,8 +69,8 @@ class TalkWindow(tk.Toplevel):
         """送信ボタンクリックまたはEnterキー押下時の処理"""
         message = self.input_text.get()
         if message:
-            # app 経由でAIに送信
-            self.app.SendMessage_toAI(message, debug=self.debug)
+            # EventBusで送信ボタンが押されたことを報告
+            self.bus.publish("UserSendMessage", message, debug=self.debug)
             # 入力フィールドをクリア
             self.input_text.delete(0, tk.END)
 

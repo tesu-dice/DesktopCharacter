@@ -12,10 +12,11 @@ from tkinter import ttk  # スタイル付きウィジェットのため
 
 # プログラム同士のインポート（これらは外部ファイルとして存在し、設定UIから利用される）
 from services import config_controller # 設定ファイルの読み書きや、設定値の管理を行うモジュール
+from services.Event_Bus import EventBus
 from ai import AI_geminiAPI
 from ai import AI_ollama
-from ui import tts_VoiceVoxEngine # VoiceVoxエンジンのスピーカーリストなどを取得するために使用
-from ui import tts_WindowsNarratorManager # Windowsナレーターの音声モデルなどを取得するために使用
+from ui import TTS_VoiceVoxEngine # VoiceVoxエンジンのスピーカーリストなどを取得するために使用
+from ui import TTS_WindowsNarratorManager # Windowsナレーターの音声モデルなどを取得するために使用
 from main import get_CharacterFolders # mainモジュールからget_CharacterFoldersをインポート
 
 # 設定オプションのUIを管理するクラス
@@ -24,7 +25,7 @@ class UI(tk.Toplevel):
     アプリケーションの設定オプションを表示・変更するためのトップレベルウィンドウ。
     設定データは再帰的にUIに表示され、ユーザーの入力に応じてリアルタイムで更新されます。
     """
-    def __init__(self, ui, app, settings: config_controller.UserSettings):
+    def __init__(self, master, bus : EventBus, settings: config_controller.UserSettings):
         """
         UI_settingsウィンドウを初期化します。
         
@@ -34,12 +35,12 @@ class UI(tk.Toplevel):
             settings (config_controller.UserSettings): アプリケーション全体の設定を管理するオブジェクト。
                                                       このオブジェクトを通して設定値の取得と更新を行います。
         """
-        super().__init__(ui)
+        super().__init__(master)
         self.title("設定")  # ウィンドウのタイトルを設定
         self.geometry("1000x700")  # ウィンドウの初期サイズを設定
         self.settings = settings  # UserSettingsオブジェクトをインスタンス変数として保持
-        self.parent_ui = ui # 親UIへの参照を保持
-        self.app= app
+        self.parent_ui = master # 親UIへの参照を保持
+        self.bus = bus
 
         self._widget_vars: dict[str, tk.Variable] = {} # {full_path: tk.Variable_instance}
 
@@ -130,11 +131,11 @@ class UI(tk.Toplevel):
                 item_obj.options = get_CharacterFolders()
             elif full_path == "VoiceSettings.VOICEVOX.Model":
                 if self.app.engine_process is not None:
-                    item_obj.options = talk_VoiceVoxEngine.get_speakers()
+                    item_obj.options = TTS_VoiceVoxEngine.get_speakers()
                 else :
                     item_obj.options = ["サーバを起動していません。"]
             elif full_path == "VoiceSettings.windowsNarrator.Model":
-                item_obj.options = talk_WindowsNarratorManager.get_SAPIVoice_names()
+                item_obj.options = TTS_WindowsNarratorManager.get_SAPIVoice_names()
             combobox = ttk.Combobox(parent_widget_frame, textvariable=var, values=item_obj.options, state="readonly")
             combobox.grid(row=0, column=1, sticky="ew", padx=5)
             self._widget_vars[full_path] = var # 変数を保存
@@ -183,14 +184,14 @@ class UI(tk.Toplevel):
                         #音声モデルの選択
                     elif full_path == "VoiceSettings.VOICEVOX.Model":
                         if self.app.engine_process is not None:
-                            func_to_call = talk_VoiceVoxEngine.get_speakers
+                            func_to_call = TTS_VoiceVoxEngine.get_speakers
                         else:
                             # サーバーが起動していない場合は、その旨を表示して終了
                             combobox['values'] = ["サーバを起動していません。"]
                             var.set("サーバを起動していません。")
                             return
                     elif full_path == "VoiceSettings.windowsNarrator.Model":
-                        func_to_call = talk_WindowsNarratorManager.get_SAPIVoice_names
+                        func_to_call = TTS_WindowsNarratorManager.get_SAPIVoice_names
                     
                     
                     # 他のパスと関数のマッピングをここに追加できます
@@ -395,7 +396,7 @@ class UI(tk.Toplevel):
 
         # UserSettingsオブジェクトに保持されている現在の設定データをファイルに書き込む
         config_controller.write_configfile(self.settings)
-        self.master.app.reboot(self.master.debug)
+        self.bus.publish("Req_ExitApp", True)
         
         self.withdraw() # 設定ウィンドウを閉じる
 

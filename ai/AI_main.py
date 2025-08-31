@@ -107,12 +107,8 @@ class AI_Manager():
             self.history = self.history[-max_history_length:]
 
         #トークウィンドウがあればテキストを追加
-        if self.app.ui.talk_window and self.app.ui.talk_window.winfo_exists():
-            if debug > -1:
-                indent = "  " * debug
-                print(f"{indent}AI_main.py add_talkhistory() called.")
-                debug +=1
-            self.app.ui.talk_window.add_log(newhistory)
+        self.bus.publish("Req_AddTalkLog", newhistory)
+        
 
     # キャラクター画像を読み込み、AIへ指示書として返す。
     def load_imgs(self, dir_name):
@@ -150,41 +146,8 @@ class AI_Manager():
         print(response)
 
         #イベント発行
-        self.bus.publish("AI_response", response["text"])
-        #threadを使った並列音声読み上げ処理
-        thread = threading.Thread(target=self.Reflecting_textResponsestoUI, args=(response["text"], debug))
-        thread.daemon = True
-        thread.start()
+        self.bus.publish("AIGenerateMessage", response["text"])
         
-    # テキスト応答をUIに反映・読み上げ (geminiAPI.py と同じロジック)
-    def Reflecting_textResponsestoUI(self, texts, debug=-1):
-        print(f"この部分はEventBusを使った発行後、他クラスによって実行予定。AI_main.py Reflecting_textResponsestoUI() called.")
-        mode = self.usersetting.get_setting_value("VoiceSettings.engine")
-        for text in texts.split("\n"):
-            if text == "":
-                break
-            # ここは '：' で画像を分離する独自のフォーマットなのでそのまま維持
-            if "：" in text: # text.find("：") > -1 の方が正確だが、in でも機能する
-                self.app.ui.update_character_image(text.split("：")[0])
-                text = text.split("：")[-1]
-
-            if(debug >= 0):
-                indent = "  " * debug
-                print(f"{indent}ollamaAI.py speech_text() was called.",mode, text)
-                debug = debug + 1
-            if(mode == "None"):
-                return
-            elif(mode == "WindowsNarrator"):
-                model_description = self.usersetting.get_setting_value("VoiceSettings.windowsNarrator.Model")
-                
-                talk_WindowsNarratorManager.text_to_speech(text, model_description, debug=debug)
-            elif(mode == "VOICEVOX"):
-                chosen_value = self.usersetting.get_setting_value("VoiceSettings.VOICEVOX.Model")
-                id = str(chosen_value).split("=")[-1]
-                talk_VoiceVoxEngine.text_to_speech(text, int(id), debug=debug)
-            else:
-                self.app.show_message_box("エラー", f"音声読み上げにおいて対応していない読み上げモードが選択されています。{mode}")
-                
 
 
 

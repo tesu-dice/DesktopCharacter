@@ -15,10 +15,11 @@ logger = logging.getLogger(__name__)
 
 # プログラム同士のやり取り
 from services.config_controller import UserSettings
-from ui import tts_VoiceVoxEngine
-from ui import tts_WindowsNarratorManager
-from ui import UI_characterImage
+from services.Event_Bus import EventBus
 from services.WindowsInfoCollecter import get_TotalMonitorSize
+from ui import TTS_VoiceVoxEngine
+from ui import TTS_WindowsNarratorManager
+from ui import UI_characterImage
 from ui import UI_settings
 
 from ui import UI_talk # UI_talk モジュールをインポート
@@ -26,15 +27,15 @@ from ui import UI_talk # UI_talk モジュールをインポート
 
 #左クリック時のメニューバーの管理
 class ContextMenuManager:
-    def __init__(self, app, ui):
-        self.app = app
+    def __init__(self, bus : EventBus, ui):
+        self.bus = bus
         self.ui  = ui
         self.menu = tk.Menu(self.ui, tearoff=0)
 
         
         self.menu.add_command(label="会話", command=self.show_textFrame)
         self.menu.add_command(label="設定", command=self.show_settingUI)
-        self.menu.add_command(label="再起動", command=self.reboot_app)
+        self.menu.add_command(label="再起動", command=lambda: self.exit_app(reboot=True))
         self.menu.add_command(label="終了", command=self.exit_app)
 
     def show_menu(self, event):
@@ -47,29 +48,26 @@ class ContextMenuManager:
         
     def show_settingUI(self):
         if self.ui.setting_window is None :
-            self.ui.setting_window = UI_settings.UI(self.ui, self.app, self.app.setting)
+            self.ui.setting_window = UI_settings.UI(self.ui, self.bus, self.ui.setting)
         elif self.ui.setting_window.winfo_exists():
-            self.ui.setting_window = UI_settings.UI(self.ui, self.app, self.app.setting)
+            self.ui.setting_window = UI_settings.UI(self.ui, self.bus, self.ui.setting)
         else:
             self.ui.setting_window.deiconify()
             self.ui.setting_window.focus_force()
 
-    #appの再起動
-    def reboot_app(self):
-        self.app.reboot(self.ui.debug)
 
 
-    def exit_app(self):
-        if self.app.engine_process is not None:
-            kill_server(self.app.engine_process)
-        self.ui.destroy()
+    def exit_app(self, reboot = False):
+        self.bus.publish("Req_ExitApp", reboot)
+            
+        
 
 
 
 
 # UI全体の管理
 class UI(tk.Tk):
-    def __init__(self, app, setting:UserSettings, debug =-1):
+    def __init__(self, bus : EventBus, setting:UserSettings, engine_process = None, debug =-1):
         super().__init__()
         #デバックの処理
         self.debug = debug
@@ -80,8 +78,10 @@ class UI(tk.Tk):
             debug = debug + 1 if debug >= 0 else -1
             
 
-        self.app = app
+        self.bus = bus
         self.setting = setting
+        self.engine_process = engine_process
+        
 
         # --- ▼ フォント設定 ▼ ---
         font_size = self.setting.get_setting_value("ApplicationSettings.FontSize")# configからフォントサイズを読み込み
@@ -95,7 +95,7 @@ class UI(tk.Tk):
         style.configure(".", font=default_font, padding=2)# "." は全てのttkウィジェットの基本スタイル
 
         #各ウィンドウの初期化
-        self.talk_window = UI_talk.TalkWindow(self, self.app, self.setting, debug=debug);   self.talk_window.withdraw()
+        self.talk_window = UI_talk.TalkWindow(self, self.bus, self.setting, debug=debug);   self.talk_window.withdraw()
         self.setting_window = None
         
         # メインウィンドウの設定
@@ -119,11 +119,13 @@ class UI(tk.Tk):
 
 
         # ContextMenuManagerのインスタンス化
-        self.context_menu_manager = ContextMenuManager(app=self.app, ui =self)
+        self.context_menu_manager = ContextMenuManager(bus=self.bus, ui =self)
         self.charaImg.bind("<Button-3>", self.context_menu_manager.show_menu)
 
+        
         #ウィンドウの初期位置を再度定義
         self.after(10, self.Refresh_windowPos)
+        self.bus.publish("UI_main.__init__() end", self.engine_process)
         logger.debug("初期化が完了しました。")
 
     #ウィンドウの位置を初期化する（__init__内でやると場合によって初期位置がずれる。）
@@ -133,7 +135,42 @@ class UI(tk.Tk):
         self.geometry(f"{monitors_data[0]}x{monitors_data[1]}+{monitors_data[2]}+{monitors_data[3]}") # すべての範囲に収まるように取得
         self.deiconify()
     
+    # テキスト応答をUIに反映・読み上げ (geminiAPI.py と同じロジック)
+    def Reflecting_TextResponses(self, texts, debug=-1):
+        mode = self.setting.get_setting_value("VoiceSettings.engine")#合成音声モデルのタイプ
+        for text in texts.split("\n"):
+            if text == "":
+                break
+            # ここは '：' で画像を分離する独自のフォーマットなのでそのまま維持
+            if "：" in text: # text.find("：") > -1 の方が正確だが、in でも機能する
+                self.update_character_image(text.split("：")[0])
+                text = text.split("：")[-1]
 
+            if(debug >= 0):
+                indent = "  " * debug
+                _ = "UI_main.py Reflecting_textResponsestoUI() called."
+                print(f"{indent}{_}")
+                logger.info(_)
+            if(mode == "None"):
+                return
+            elif(mode == "WindowsNarrator"):
+                model_description = self.setting.get_setting_value("VoiceSettings.windowsNarrator.Model")
+                TTS_WindowsNarratorManager.text_to_speech(text, model_description, debug=debug)
+            elif(mode == "VOICEVOX"):
+                chosen_value = self.setting.get_setting_value("VoiceSettings.VOICEVOX.Model")
+                id = str(chosen_value).split("=")[-1]
+                TTS_VoiceVoxEngine.text_to_speech(text, int(id), debug=debug)
+            else:
+                logger.warning(f"対応していない読み上げモードが選択されています。{mode}")
+                
+    #VVのサーバを起動する
+    def start_TTS_Server(self):
+        #TTSサーバの起動
+        #VOICEVOXEngineの起動
+        if  self.engine_process == None and \
+            self.setting.get_setting_value("VoiceSettings.VOICEVOX.autorun") == True:
+            self.engine_process = TTS_VoiceVoxEngine.start_server(self.setting.get_setting_value("VoiceSettings.VOICEVOX.path"), self.setting.get_setting_value("VoiceSettings.VOICEVOX.usegpu"),debug=self.debug)
+        self.bus.publish("Start_TTS_Server", self.engine_process)
 
 
     #ユーザのメッセージ送信
@@ -145,7 +182,7 @@ class UI(tk.Tk):
             # TalkWindow が master_controller を直接呼び出します。
             pass # このメソッドは不要になりました
 
-    #キャラクター画像クリックを
+    #キャラクター画像クリック
     def _handle_character_click(self):
         """キャラクタークリック時の処理"""
         # キャラクタークリック時のログは TalkWindow が開いていればそこに追加

@@ -13,7 +13,7 @@ from services import Event_Bus
 from ui import UI_main
 from ai import AI_main
 from services.release_check import check_nowver_is_newestver
-from ui.tts_VoiceVoxEngine import start_server
+from ui.TTS_VoiceVoxEngine import start_server
 
 
 
@@ -41,16 +41,49 @@ class myapp():
         #各要素の起動
             #シングルトンではないけどシングルトンのように扱う要素
         self.setting = config_controller.read_configfile("config.json")#ユーザデータの読み込み
-        self.EvnetBus = Event_Bus.EventBus()
+        self.bus = Event_Bus.EventBus()
             #各種サービス要素
-        self.WinInfo = WindowsInfoCollecter.win_info_collector(self.EvnetBus, self.setting, debug=debug)
-        self.AI_Manager = AI_main.AI_Manager(self.EvnetBus, self.setting, TalkHistory, debug=debug)
-        self.ui = UI_main.UI(self.EvnetBus, self.setting, debug=debug)
+        self.WinInfo = WindowsInfoCollecter.win_info_collector(self.bus, self.setting, debug=debug)
+        self.AI_Manager = AI_main.AI_Manager(self.bus, self.setting, TalkHistory, debug=debug)
+        self.ui = UI_main.UI(self.bus, self.setting, debug=debug)
         #イベントバスへの購読設定
         self._setup_event_listeners()
         
         
 
+        
+        #アプリケーション動作開始
+        self.bus.publish("application start")
+        self.update(debug=debug)
+        
+    #EventBusにおける購読処理の初期化
+    def _setup_event_listeners(self):
+        #アプリケーションの起動メッセージ(サーバの起動完了後)
+        self.bus.subscribe("application start", self.ui.start_TTS_Server)
+        self.bus.subscribe("Start_TTS_Server", self.app_start_message)
+
+        #アプリからユーザへのポップアップメッセージ
+        self.bus.subscribe("Req_PopUpMessage", self.ui.show_message_box)
+
+
+
+        #ユーザからTalkWindowでメッセージが送信されたとき(UserMessage)
+        self.bus.subscribe("UserSendMessage", self.AI_Manager.response)
+        self.bus.subscribe("AIGenerateMessage", self.ui.Reflecting_TextResponses)
+        self.bus.subscribe("Req_AddTalkLog", self.ui.talk_window.add_log)
+        
+        #アプリケーションの終了
+        self.bus.subscribe("Req_ExitApp", self.exit)
+
+
+
+    #アプリケーション起動時の送信メッセージ
+    def app_start_message(self, serverid, debug = -1):
+        _start_info_texts = ""
+        _start_info_error = ""
+        debug = -1
+        
+        
         #リリースバージョンの確認
         CURRENT_APP_VERSION = "1.0.1" # 現在のバージョンを設定
         _result = check_nowver_is_newestver("tesu-dice", "DesktopCharacter_forRelease", CURRENT_APP_VERSION)
@@ -71,40 +104,41 @@ class myapp():
             if _result[0] == False:
                 _start_info_error += f"GeminiAPIの接続に失敗しました。:\n{_result[1]}\n\n"
 
+        #VoiceVoxサーバの起動
+        if serverid == None:#起動しない設定の場合
+            pass
+        else:
+            _start_info_texts += f"---VoiceVoxサーバの起動---\n"
+            f = serverid != False
+            _start_info_texts += f"{('成功' if f else '失敗')}\n\n"
+            if not f:
+                _start_info_error += f"VoiceVoxサーバの起動に失敗しました。"
+                logging.error("VoiceVoxサーバの起動に失敗しました。")
 
-        #VOICEVOXEngineの起動
-        if  self.engine_process == None and \
-            self.setting.get_setting_value("VoiceSettings.VOICEVOX.autorun") == True:
             
-            self.engine_process = start_server(self.setting.get_setting_value("VoiceSettings.VOICEVOX.path"), self.setting.get_setting_value("VoiceSettings.VOICEVOX.usegpu"),debug=debug)
-            _start_info_texts += f"---VOICEVOXエンジンの起動---\n{('成功' if self.engine_process != False else '失敗')}\n\n"
+
+        
 
 
         #起動メッセージ
-        self.ui.show_message_box("info", "起動メッセージ", _start_info_texts)
+        self.bus.publish("Req_PopUpMessage", "info", "起動メッセージ", _start_info_texts)
         #エラーメッセージ
         if _start_info_error != "":
-            self.ui.show_message_box("info", "エラーメッセージ", _start_info_error)
-        
-        #アプリケーション動作開始
-        self.EvnetBus.publish("init_application", debug=debug)
-        self.update(debug=debug)
-        
-    #EventBusにおける購読処理の初期化
-    def _setup_event_listeners(self):
-        
-        
-        pass
+            self.bus.publish("Req_PopUpMessage", "info", "エラーメッセージ", _start_info_error)
 
 
-
-
-    #アプリケーションの再起動
-    def reboot(self, debug = -1):
-        self.ui.after_cancel(self.update_id)
-        self.ui.destroy()
-        # start_app に状態を引き継いで再起動
-        start_app(engine_process=self.engine_process, TalkHistory=self.AI_Manager.history, debug=debug)
+    #アプリケーションの終了、再起動
+    def exit(self, reboot = False, debug = -1):
+        if reboot==True:
+            print("アプリの再起動を行います。")
+            #self.ui.after_cancel(self.update_id)
+            # start_app に状態を引き継いで再起動
+            self.__init__(engine_process=self.ui.engine_process, TalkHistory=self.AI_Manager.history, debug=debug)
+            
+        else:
+            print("アプリケーションを終了します。")
+            self.ui.destroy()
+            
     
     #状態監視の実行
     def update(self, debug = -1):
@@ -189,5 +223,4 @@ def _setup_logging_info():
 
 
 if __name__ =="__main__":
-    # 初回起動
     start_app(debug=-1)
