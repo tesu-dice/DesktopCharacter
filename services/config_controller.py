@@ -143,7 +143,12 @@ class UserSettings:
     def get_setting_value(self, path: str, default: Any = None) -> Any:
         """パスによって設定の値を取得します。"""
         item = self._settings_map.get(path)
-        return item.value if item else default
+        if item:
+            return item.value
+        else:
+            print("警告: パス '{path}' の設定が見つかりません。")
+            logger.warning(f"警告: パス '{path}' の設定が見つかりません。")
+            return "参照エラー"
 
     def set_setting_value(self, path: str, new_value: Any) -> bool:
         """

@@ -11,7 +11,8 @@ import logging
 import time
 #プログラム
 from services import WindowsInfoCollecter
-from services import config_controller
+from services.config_controller import UserSettings, read_configfile
+
 from services import Event_Bus
 from ui import UI_main
 from ai import AI_main
@@ -43,7 +44,7 @@ class myapp():
 
         #各要素の起動
             #シングルトンではないけどシングルトンのように扱う要素
-        self.setting = config_controller.read_configfile("config.json")#ユーザデータの読み込み
+        self.setting = read_configfile("config.json")#ユーザデータの読み込み
         self.bus = Event_Bus.EventBus()
             #各種サービス要素
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.bus, self.setting, debug=debug)
@@ -78,6 +79,9 @@ class myapp():
         #アプリケーションの終了
         self.bus.subscribe("Req_ExitApp", self.exit)
 
+        #設定の更新
+        self.bus.subscribe("SettingsUpdated", self.on_settings_updated)
+
 
 
     #アプリケーション起動時の送信メッセージ
@@ -85,7 +89,11 @@ class myapp():
         _start_info_texts = ""
         _start_info_error = ""
         debug = -1
-        
+        if debug >= 0:
+            indent = "  " * debug
+            print(f"{indent}main.py app_start_message() called.")
+            print(f"{indent}serverid = {serverid}")
+            debug = debug + 1 if debug >= 0 else -1
         
         #リリースバージョンの確認
         CURRENT_APP_VERSION = "1.0.1" # 現在のバージョンを設定
@@ -108,8 +116,9 @@ class myapp():
                 _start_info_error += f"GeminiAPIの接続に失敗しました。:\n{_result[1]}\n\n"
 
         #VoiceVoxサーバの起動
-        if serverid == None:#起動しない設定の場合
+        if serverid == None:
             pass
+            
         else:
             _start_info_texts += f"---VoiceVoxサーバの起動---\n"
             f = serverid != False
@@ -117,17 +126,21 @@ class myapp():
             if not f:
                 _start_info_error += f"VoiceVoxサーバの起動に失敗しました。"
                 logging.error("VoiceVoxサーバの起動に失敗しました。")
-
             
 
+
         
-
-
         #起動メッセージ
         self.bus.publish("Req_PopUpMessage", "info", "起動メッセージ", _start_info_texts)
         #エラーメッセージ
         if _start_info_error != "":
             self.bus.publish("Req_PopUpMessage", "info", "エラーメッセージ", _start_info_error)
+
+    def on_settings_updated(self, new_settings: UserSettings):
+        """設定が更新されたときに呼び出され、アプリケーション全体の設定を更新します。"""
+        logging.info("アプリケーション全体の設定を更新します...")
+        self.setting = new_settings
+        logging.info("アプリケーション全体の設定更新が完了しました。")
 
 
     #アプリケーションの終了、再起動
