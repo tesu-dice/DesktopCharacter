@@ -4,8 +4,11 @@
 """
 #ライブラリ
 import os
+import sys
+import subprocess
 import threading
 import logging
+import time
 #プログラム
 from services import WindowsInfoCollecter
 from services import config_controller
@@ -69,8 +72,8 @@ class myapp():
 
         #ユーザからTalkWindowでメッセージが送信されたとき(UserMessage)
         self.bus.subscribe("UserSendMessage", self.AI_Manager.response)
-        self.bus.subscribe("AIGenerateMessage", self.ui.Reflecting_TextResponses)
-        self.bus.subscribe("Req_AddTalkLog", self.ui.talk_window.add_log)
+        self.bus.subscribe("AIGenerateMessage", self.ui.Reflecting_TextResponses) # UI側でスレッドセーフ化
+        #self.bus.subscribe("Req_AddTalkLog", self.ui.add_talk_log) # スレッドセーフなメソッドに変更
         
         #アプリケーションの終了
         self.bus.subscribe("Req_ExitApp", self.exit)
@@ -128,16 +131,26 @@ class myapp():
 
 
     #アプリケーションの終了、再起動
-    def exit(self, reboot = False, debug = -1):
-        if reboot==True:
-            print("アプリの再起動を行います。")
-            #self.ui.after_cancel(self.update_id)
-            # start_app に状態を引き継いで再起動
-            self.__init__(engine_process=self.ui.engine_process, TalkHistory=self.AI_Manager.history, debug=debug)
-            
-        else:
-            print("アプリケーションを終了します。")
-            self.ui.destroy()
+    def exit(self, _reboot = False, debug = -1):
+        print(f"アプリケーションを終了します。再起動: {_reboot}")
+        # self.ui.afterでスケジュールされたupdateをキャンセル
+        if hasattr(self, 'update_id'):
+            self.ui.after_cancel(self.update_id)
+        
+        # UIを破棄して現在のプロセスを終了する
+        self.ui.destroy()
+
+        if _reboot:
+            # PyInstallerなどでexe化されているかチェック
+            if getattr(sys, 'frozen', False):
+                # exe化されている場合: 自分自身(exe)を起動
+                application_path = sys.executable
+                os.execl(application_path, application_path)
+            else:
+                # 通常のPythonスクリプトとして実行されている場合
+                python = sys.executable
+                os.execl(python, python, *sys.argv)
+        
             
     
     #状態監視の実行
@@ -223,4 +236,5 @@ def _setup_logging_info():
 
 
 if __name__ =="__main__":
+    print("アプリケーションを起動します。")
     start_app(debug=-1)

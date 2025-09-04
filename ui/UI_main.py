@@ -113,7 +113,7 @@ class UI(tk.Tk):
         # 会話ウィンドウのインスタンスを保持する変数 (最初はNone)
 
         # CharacterLabelのインスタンス化と配置
-        self.charaImg = UI_characterImage.CharacterLabel(master=self, click_callback=self._handle_character_click, setting= self.setting, debug=debug)
+        self.charaImg = UI_characterImage.CharacterLabel(master=self, click_callback=self._handle_character_click, setting= self.setting, bus=self.bus, debug=debug)
         self.charaImg.bind("<Button-1>", self.start_drag)
         self.charaImg.bind("<B1-Motion>", self.do_drag)
 

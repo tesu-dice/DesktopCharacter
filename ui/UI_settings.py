@@ -75,7 +75,7 @@ class UI(tk.Toplevel):
 
         # --- 保存ボタンの配置 ---
         # ユーザーが変更を確定し、ウィンドウを閉じるためのボタン
-        save_button = ttk.Button(self, text="保存して再起動", command=self.save_and_close)
+        save_button = ttk.Button(self, text="設定を反映", command=self.save_and_apply_settings)
         save_button.pack(pady=10)
         #Xボタンで破棄しないように設定
         self.protocol("WM_DELETE_WINDOW", self.withdraw)
@@ -353,13 +353,13 @@ class UI(tk.Toplevel):
         self.scrollable_frame.update_idletasks() # フレーム内のウィジェット配置後、フレームのサイズを更新
         self._on_frame_configure() # スクロール領域を更新し、初期スクロール位置を設定
 
-    def save_and_close(self):
+    def save_and_apply_settings(self):
         """
         すべてのUIウィジェットから現在の値を取得し、それを実際のUserSettingsオブジェクトに適用し、
         最終的にファイルに保存します。
-        その後、設定ウィンドウを閉じ、親UIに通知します。
+        その後、設定更新を通知し、ウィンドウを閉じます。
         """
-        print("「保存して閉じる」ボタンが押されました。すべてのUI値を読み取り、設定に適用します。")
+        print("「設定を反映」ボタンが押されました。すべてのUI値を読み取り、設定に適用します。")
         for path, var_obj in self._widget_vars.items():
             item = self.settings.get_setting_item(path)
             if not item:
@@ -396,7 +396,8 @@ class UI(tk.Toplevel):
 
         # UserSettingsオブジェクトに保持されている現在の設定データをファイルに書き込む
         config_controller.write_configfile(self.settings)
-        self.bus.publish("Req_ExitApp", True)
+        # EventBusで設定更新を通知
+        self.bus.publish("SettingsUpdated", self.settings)
         
         self.withdraw() # 設定ウィンドウを閉じる
 

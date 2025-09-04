@@ -51,12 +51,14 @@ class charaimg_controller():
 
 class CharacterLabel(tk.Label):
     """キャラクター画像を表示するためのフレーム（ラベル/ボタン）です。"""
-    def __init__(self, master, click_callback, setting:UserSettings, debug = -1):
+    def __init__(self, master, click_callback, setting:UserSettings, bus, debug = -1):
         super().__init__(master)
         self.config(background=self.master.cget("background"))
         self.config(activebackground=self.master.cget("background"))
         self.click_callback = click_callback
         self.setting = setting
+        self.bus = bus
+        self.bus.subscribe("SettingsUpdated", self.on_settings_updated)
         
         _size = self.setting.get_setting_value("ApplicationSettings.CharacterImage.Size")
         self.character_image_manager = charaimg_controller(win_h=_size, win_w=_size, setting=self.setting)
@@ -96,6 +98,22 @@ class CharacterLabel(tk.Label):
             self.config(image=new_img_tk)
         else:
             print(f"エラー: 画像名 '{img_name}' は CharacterImageManager に見つかりません。")
+
+    def on_settings_updated(self, new_settings: UserSettings):
+        """設定が更新されたときに呼び出され、キャラクターの表示を更新します。"""
+        print("キャラクター画像の表示設定を更新します...")
+        self.setting = new_settings
+
+        # 新しい設定で画像を再読み込み
+        _size = self.setting.get_setting_value("ApplicationSettings.CharacterImage.Size")
+        self.character_image_manager = charaimg_controller(win_h=_size, win_w=_size, setting=self.setting)
+        self._init_image()
+
+        # ウィンドウの位置も更新される可能性があるため再配置
+        self.place( x=self.master.winfo_screenwidth()/2 + abs(get_TotalMonitorSize()[2]),
+                    y=self.master.winfo_screenheight()/2 + abs(get_TotalMonitorSize()[3])
+                    )
+        print("キャラクター画像の表示設定の更新が完了しました。")
 
     
 
