@@ -16,8 +16,7 @@ class TalkWindow(tk.Toplevel):
     def __init__(self, master, bus:EventBus, setting: UserSettings, debug=-1):
         # Toplevelとしての初期化
         super().__init__(master)
-        self.title("会話")
-        # 初期サイズと位置は適宜調整してください
+        self.title("DesktopCharacter_会話")
         self.geometry(f"{500}x{400}")
         # self.geometry(f"{setting.get_setting_value('otherSettings.textWindowSize.width')}x{setting.get_setting_value('otherSettings.textWindowSize.height')}") # 設定ファイルから読み込む場合
         self.debug = debug # デバッグレベルをインスタンス変数として保持
@@ -64,6 +63,9 @@ class TalkWindow(tk.Toplevel):
         #Xボタンで破棄しないように設定
         self.protocol("WM_DELETE_WINDOW", self.withdraw)
         
+        self.bus.subscribe("UserSettings_Updated", self._apply_settings) # イベントを購読
+        self._apply_settings(self.setting) # 初期スタイルを適用
+        
 
     def _on_send_click(self, event=None): # debug引数を削除し、self.debugを使用
         """送信ボタンクリックまたはEnterキー押下時の処理"""
@@ -98,6 +100,29 @@ class TalkWindow(tk.Toplevel):
             self.message_text.insert("end", message+"\n")
             self.message_text.see("end")
             self.message_text.configure(state="disabled")
+
+    def _apply_settings(self, setting : UserSettings):
+        """設定に基づいてUIのスタイルを適用する"""
+        self.setting = setting
+
+        # フォント設定
+        try:
+            font_size = int(self.setting.get_setting_value("ApplicationSettings.FontSize"))
+            font_family = "Yu Gothic UI"
+            
+            # tk.Text ウィジェットのフォント設定
+            font_tuple = (font_family, font_size)
+            self.message_text.configure(font=font_tuple)
+            
+            # tk.Entry ウィジェットのフォント設定
+            self.input_text.configure(font=font_tuple)
+
+        except (ValueError, TypeError, AttributeError) as e:
+            logger.warning(f"Invalid or missing font settings. Using default. Error: {e}")
+            # デフォルトフォントを設定するなどのフォールバック処理
+            default_font = ("Yu Gothic UI", 10)
+            self.message_text.configure(font=default_font)
+            self.input_text.configure(font=default_font)
 
 if __name__ == "__main__":
     import main

@@ -45,7 +45,6 @@ class AI_Manager():
         self.setting = setting
         self.history = TalkHistory
         self.AI_client = None # AIクライアントのインスタンスを保持
-        self.logger = logging.getLogger('ai') # ロガーを取得
 
         self.bus.subscribe("SettingsUpdated", self.on_settings_updated)
 
@@ -58,7 +57,7 @@ class AI_Manager():
         self.active_history_num = 5
         """設定に基づいてAIクライアントを初期化または再初期化します。"""
         selected_service = self.setting.get_setting_value("LLMSettings.Service")
-        self.logger.info(f"AIクライアントを初期化しています... サービス: {selected_service}")
+        logger.info(f"AIクライアントを初期化しています... サービス: {selected_service}")
 
         if selected_service == "geminiAPI":
             self.AI_client = AI_geminiAPI.geminiAI(self.setting, debug=debug)
@@ -66,14 +65,14 @@ class AI_Manager():
             self.AI_client = AI_ollama.ollamaAI(self.setting, debug=debug)
         else:
             self.AI_client = None
-            self.logger.warning(f"選択されたAIサービス '{selected_service}' はサポートされていないため、AIクライアントは設定されませんでした。")
+            logger.warning(f"選択されたAIサービス '{selected_service}' はサポートされていないため、AIクライアントは設定されませんでした。")
 
     def on_settings_updated(self, new_settings: UserSettings):
         """設定が更新されたときに呼び出され、AIクライアントを再初期化します。"""
-        self.logger.info("AIマネージャーの設定を更新します...")
+        logger.info("AIマネージャーの設定を更新します...")
         self.setting = new_settings
         self._initialize_client()
-        self.logger.info("AIマネージャーの設定更新が完了しました。")
+        logger.info("AIマネージャーの設定更新が完了しました。")
 
         #会話設定や履歴の管理
         #会話設定
