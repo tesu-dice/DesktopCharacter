@@ -70,9 +70,10 @@ class TalkWindow(tk.Toplevel):
     def _on_send_click(self, event=None): # debug引数を削除し、self.debugを使用
         """送信ボタンクリックまたはEnterキー押下時の処理"""
         message = self.input_text.get()
+        _new_talkhistory = {"role": "user", "parts":[message]}
         if message:
             # EventBusで送信ボタンが押されたことを報告
-            self.bus.publish("UserSendMessage", message, debug=self.debug)
+            self.bus.publish("UserSendMessage", _new_talkhistory, debug=self.debug)
             # 入力フィールドをクリア
             self.input_text.delete(0, tk.END)
 

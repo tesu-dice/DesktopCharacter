@@ -72,7 +72,9 @@ class myapp():
 
 
         #ユーザからTalkWindowでメッセージが送信されたとき(UserMessage)
+        self.bus.subscribe("UserSendMessage", self.ui.talk_window.add_log)
         self.bus.subscribe("UserSendMessage", self.AI_Manager.response)
+        self.bus.subscribe("AIGenerateMessage", self.ui.talk_window.add_log)
         self.bus.subscribe("AIGenerateMessage", self.ui.Reflecting_TextResponses) # UI側でスレッドセーフ化
         #self.bus.subscribe("Req_AddTalkLog", self.ui.add_talk_log) # スレッドセーフなメソッドに変更
         
@@ -189,11 +191,8 @@ class myapp():
             w = "\nアクティブなウィンドウ：" + self.WinInfo.get_activate_window()
         if self.setting.get_setting_value("ApplicationSettings.Permisson.PlayingMedia") == True:
             m = "\n再生中のメディア：" + self.WinInfo.get_plaing_media(debug = debug + 1 if debug >= 0 else -1) 
-        send_text = text + t + w + m 
-        thread = threading.Thread(target=self.AI_Manager.response, args=(send_text, debug))
-        thread.daemon = True
-        thread.start()
-
+        send_text = text + t + w + m
+        self.bus.publish("UserSendMessage", {"role": "user", "parts":[send_text]}, debug=debug)
 
 
 

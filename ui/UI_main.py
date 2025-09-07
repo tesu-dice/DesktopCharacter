@@ -34,7 +34,6 @@ class ContextMenuManager:
         _font = ("Yu Gothic UI", setting.get_setting_value("ApplicationSettings.FontSize"))
         self.menu.add_command(label="会話", command=self.show_textFrame, font = _font)
         self.menu.add_command(label="設定", command=self.show_settingUI, font = _font)
-        self.menu.add_command(label="再起動", command=lambda: self.exit_app(reboot=True), font = _font)
         self.menu.add_command(label="終了", command=self.exit_app, font = _font)
 
     def show_menu(self, event):
@@ -158,12 +157,13 @@ class UI(tk.Tk):
         self.geometry(f"{monitors_data[0]}x{monitors_data[1]}+{monitors_data[2]}+{monitors_data[3]}")
         self.deiconify()
     
-    def Reflecting_TextResponses(self, texts, debug=-1):
+    def Reflecting_TextResponses(self, talk_dict:dict, debug=-1):
         """テキスト応答をUIに反映し、設定に基づいて読み上げます。"""
         if self.TTS is None:
             logger.warning("TTSクライアントが初期化されていないため、読み上げをスキップします。")
             return
 
+        texts = talk_dict.get("parts")[0]
         for text in texts.split("\n"):
             if not text:
                 continue

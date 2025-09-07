@@ -96,9 +96,11 @@ class AI_Manager():
         self.init_prompt= [{"role": "user", "parts":[base_prompt + Character_set_text]},({"role": "model", "parts":["了解しました。"]})]
 
 
-    def add_talkhistory(self,type, text, debug = -1):
-        newhistory = {"role": f"{type}", "parts":[text]}
-        self.history.append(newhistory)
+    def add_talkhistory(self, input_dict:dict, debug = -1):
+        #会話履歴のリストに会話の辞書を追加する
+        # dict{"role", "parts", "img", "token_count"}
+
+        self.history.append(input_dict)
         
         #会話が長くなりすぎたら削除
         max_history_length = 100
@@ -106,7 +108,7 @@ class AI_Manager():
             self.history = self.history[-max_history_length:]
 
         #トークウィンドウがあればテキストを追加
-        self.bus.publish("Req_AddTalkLog", newhistory)
+        self.bus.publish("Req_AddTalkLog", input_dict)
         
 
     # キャラクター画像を読み込み、AIへ指示書として返す。
@@ -128,24 +130,25 @@ class AI_Manager():
             return ["AIサービスが選択されていません。"]
         return self.AI_client.get_models()
     
-    def response(self, input_text: str, input_img_path: str = None, debug: int = -1):
+    def response(self, input_dict : dict, debug: int = -1):
         #AIの指定がなかった場合
         if self.AI_client is None:
             return {"text": "AIサービスが選択されていません。", "token_count": 0}
         
         #送信する会話履歴の処理
-        self.add_talkhistory("user", input_text, debug)
+        self.add_talkhistory(input_dict, debug)
         if len(self.history) > self.active_history_num:
             past_contents = self.history[-self.active_history_num:]
         else:
             past_contents = self.history
         #返答の生成
         response = self.AI_client.response(input_contents=self.init_prompt + past_contents, debug = debug)
-        self.add_talkhistory("model", response["text"], debug)
+        self.add_talkhistory(input_dict, debug)
         print(response)
+        output_dict = {"role": "model", "parts":[response["text"]], "token_count": response["token_count"]}
 
         #イベント発行
-        self.bus.publish("AIGenerateMessage", response["text"])
+        self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
         
 
 
