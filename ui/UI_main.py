@@ -8,13 +8,16 @@
 import tkinter as tk
 from tkinter import ttk  # スタイル付きウィジェットのため
 from tkinter import messagebox
-import os
-import random  # 初期立ち絵をランダムに設定するため
+import logging
+logger = logging.getLogger(__name__)
+
 # プログラム同士のやり取り
 from services.config_controller import UserSettings
-from tts.talk_VoiceVoxEngine import kill_server
-from ui import UI_characterImage
+from services.Event_Bus import EventBus
 from services.WindowsInfoCollecter import get_TotalMonitorSize
+from ui import TTS_VoiceVoxEngine
+from ui import TTS_WindowsNarratorManager
+from ui import UI_characterImage
 from ui import UI_settings
 
 from ui import UI_talk # UI_talk モジュールをインポート
@@ -22,16 +25,16 @@ from ui import UI_talk # UI_talk モジュールをインポート
 
 #左クリック時のメニューバーの管理
 class ContextMenuManager:
-    def __init__(self, app, ui):
-        self.app = app
+    def __init__(self, ui, bus : EventBus, setting : UserSettings):
         self.ui  = ui
+        self.bus = bus
+        self.setting = setting
         self.menu = tk.Menu(self.ui, tearoff=0)
 
-        
-        self.menu.add_command(label="会話", command=self.show_textFrame)
-        self.menu.add_command(label="設定", command=self.show_settingUI)
-        self.menu.add_command(label="再起動", command=self.reboot_app)
-        self.menu.add_command(label="終了", command=self.exit_app)
+        _font = ("Yu Gothic UI", setting.get_setting_value("ApplicationSettings.FontSize"))
+        self.menu.add_command(label="会話", command=self.show_textFrame, font = _font)
+        self.menu.add_command(label="設定", command=self.show_settingUI, font = _font)
+        self.menu.add_command(label="終了", command=self.exit_app, font = _font)
 
     def show_menu(self, event):
         self.menu.post(event.x_root, event.y_root)
@@ -43,115 +46,165 @@ class ContextMenuManager:
         
     def show_settingUI(self):
         if self.ui.setting_window is None :
-            self.ui.setting_window = UI_settings.UI(self.ui, self.app, self.app.setting)
+            self.ui.setting_window = UI_settings.UI(self.ui, self.bus, self.ui.setting)
         elif self.ui.setting_window.winfo_exists():
-            self.ui.setting_window = UI_settings.UI(self.ui, self.app, self.app.setting)
+            self.ui.setting_window = UI_settings.UI(self.ui, self.bus, self.ui.setting)
         else:
             self.ui.setting_window.deiconify()
             self.ui.setting_window.focus_force()
 
-    #appの再起動
-    def reboot_app(self):
-        self.app.reboot(self.ui.debug)
 
 
-    def exit_app(self):
-        if self.app.engine_process is not None:
-            kill_server(self.app.engine_process)
-        self.ui.destroy()
+    def exit_app(self, reboot = False):
+        self.bus.publish("Req_ExitApp", reboot)
+            
+        
 
 
 
 
 # UI全体の管理
 class UI(tk.Tk):
-    def __init__(self, app, setting:UserSettings, debug =-1):
+    def __init__(self, bus: EventBus, setting: UserSettings, debug=-1):
         super().__init__()
-        #デバックの処理
-        self.debug = debug
-        if debug >= 0:
-            indent = "  " * debug
-            print(f"{indent}UI.py __init__() called.")
-            UI.show_message_box("info", "デバックメッセージ", "UI_main.py show_message_box()の動作確認です。")
-            debug = debug + 1 if debug >= 0 else -1
-            
-
-        self.app = app
+        logger.info("UIの初期化を開始します。")
+        self.bus = bus
         self.setting = setting
+        self.debug = debug
 
-        # --- ▼ フォント設定 ▼ ---
-        font_size = self.setting.get_setting_value("ApplicationSettings.FontSize")# configからフォントサイズを読み込み
-        if not isinstance(font_size, int):
-            font_size = 15 # 読み込み失敗時のデフォルトフォントサイズ
-        font_family = "Yu Gothic UI" # Windowsで推奨されるUIフォント
-        default_font = (font_family, font_size)
-            # 標準tkウィジェットとttkウィジェットの両方にフォントを一括で適用
-        self.option_add("*Font", default_font)# 標準tkウィジェット用 
-        style = ttk.Style(self)# ttkウィジェット用  
-        style.configure(".", font=default_font, padding=2)# "." は全てのttkウィジェットの基本スタイル
+        self.context_menu_manager = None
+        self.TTS = None # TTSクライアントのインスタンスを保持
+        self.engine_process = None # VoiceVoxのプロセスを保持
+        self.setting_window = None # 設定ウィンドウのインスタンスを保持
+        self.talk_window = None # 会話ウィンドウのインスタンスを保持
+        self.charaImg = None
+        # EventBusの購読設定
+        self.bus.subscribe("SettingsUpdated", self.apply_settings)
 
-        #各ウィンドウの初期化
-        self.talk_window = UI_talk.TalkWindow(self, self.app, self.setting, debug=debug);   self.talk_window.withdraw()
-        self.setting_window = None
-        
-        # メインウィンドウの設定
-        self.title("デスクトップキャラクター")
+
+
+        # --- ウィンドウの基本設定 ---
+        self.title("DesktopCharacter")
         if self.setting.get_setting_value("ApplicationSettings.CharacterImage.AlwaysOnTop"):
             self.attributes("-topmost", True)
         self.overrideredirect(True) # ウィンドウのタイトルバーなどを非表示
         self.trans_color = "#888888"
         self.config(background=self.trans_color)
         self.attributes("-transparentcolor", self.trans_color)
-        monitors_data = get_TotalMonitorSize()
-
-        self.geometry(f"{monitors_data[0]}x{monitors_data[1]}+{monitors_data[2]}+{monitors_data[3]}") # すべての範囲に収まるように取得
         
-        # 会話ウィンドウのインスタンスを保持する変数 (最初はNone)
-
-        # CharacterLabelのインスタンス化と配置
-        self.charaImg = UI_characterImage.CharacterLabel(master=self, click_callback=self._handle_character_click, setting= self.setting, debug=debug)
+        # --- UI要素の配置 ---
+        self.talk_window = UI_talk.TalkWindow(self, self.bus, self.setting, debug=self.debug)
+        self.charaImg = UI_characterImage.CharacterLabel(master=self, click_callback=self._handle_character_click, setting=self.setting, bus=self.bus, debug=self.debug)
         self.charaImg.bind("<Button-1>", self.start_drag)
         self.charaImg.bind("<B1-Motion>", self.do_drag)
 
-
-        # ContextMenuManagerのインスタンス化
-        self.context_menu_manager = ContextMenuManager(app=self.app, ui =self)
+        # --- 右クリックメニューの設定 ---
+        self.context_menu_manager = ContextMenuManager(ui= self, bus=self.bus, setting = self.setting)
         self.charaImg.bind("<Button-3>", self.context_menu_manager.show_menu)
 
-        #ウィンドウの初期位置を再度定義
-        self.after(10, self.Refresh_windowPos)
+        # ウィンドウ位置の初期化
+        self.after(10, self.refresh_window_position)
+        self.apply_settings(self.setting)
+        logger.debug("UIの初期化が完了しました。")
 
-    #ウィンドウの位置を初期化する（__init__内でやると場合によって初期位置がずれる。）
-    def Refresh_windowPos(self):
+    def _initialize_tts(self):
+        """設定に基づいてTTSクライアントを初期化または再初期化します。"""
+        selected_service = self.setting.get_setting_value("VoiceSettings.engine")
+        logger.info(f"TTSクライアントを初期化しています... サービス: {selected_service}")
+
+        if selected_service == "VOICEVOX":
+            self.TTS = TTS_VoiceVoxEngine
+        elif selected_service == "windowsNarrator":
+            self.TTS = TTS_WindowsNarratorManager
+        else:
+            self.TTS = None
+            logger.warning(f"選択されたTTSサービス '{selected_service}' はサポートされていません。")
+
+    def _apply_font_settings(self):
+        """現在の設定に基づいてフォントをUI全体に適用します。"""
+        font_size = self.setting.get_setting_value("ApplicationSettings.FontSize")
+        if not isinstance(font_size, int):
+            font_size = 15 # デフォルト値
+        font_family = "Yu Gothic UI"
+        default_font = (font_family, font_size)
+        
+        self.option_add("*Font", default_font)
+        style = ttk.Style(self)
+        style.configure(".", font=default_font, padding=2)
+
+    def apply_settings(self, new_settings: UserSettings):
+        """設定が更新されたときに呼び出され、UIの各要素を更新します。"""
+        logger.info("UIのメイン設定を更新します...")
+        self.setting = new_settings
+
+        # ウィンドウ設定の更新
+        self.attributes("-topmost", self.setting.get_setting_value("ApplicationSettings.CharacterImage.AlwaysOnTop"))
+        self.context_menu_manager = ContextMenuManager(ui= self, bus=self.bus, setting = self.setting)
+        self.charaImg.bind("<Button-3>", self.context_menu_manager.show_menu)
+
+
+        # フォントの再適用
+        self._apply_font_settings()
+
+        # TTSクライアントの再初期化
+        self._initialize_tts()
+        logger.info("UIのメイン設定の更新が完了しました。")
+
+    def refresh_window_position(self):
+        """ウィンドウの位置とサイズをモニター全体に合わせます。"""
         monitors_data = get_TotalMonitorSize()
-        self.withdraw()#透明ウィンドウで初期位置が今回のプログラム構成のように特殊だと位置をOS側で設定される。一度非表示にして位置調整可能にしてから調整。
-        self.geometry(f"{monitors_data[0]}x{monitors_data[1]}+{monitors_data[2]}+{monitors_data[3]}") # すべての範囲に収まるように取得
+        self.withdraw()
+        self.geometry(f"{monitors_data[0]}x{monitors_data[1]}+{monitors_data[2]}+{monitors_data[3]}")
         self.deiconify()
     
+    def Reflecting_TextResponses(self, talk_dict:dict, debug=-1):
+        """テキスト応答をUIに反映し、設定に基づいて読み上げます。"""
+        if self.TTS is None:
+            logger.warning("TTSクライアントが初期化されていないため、読み上げをスキップします。")
+            return
 
+        texts = talk_dict.get("parts")[0]
+        for text in texts.split("\n"):
+            if not text:
+                continue
+            
+            image_name = None
+            if "：" in text:
+                parts = text.split("：", 1)
+                image_name = parts[0]
+                text_to_speak = parts[1]
+            else:
+                text_to_speak = text
 
+            if image_name:
+                self.update_character_image(image_name)
+            
+            self.TTS.text_to_speech(text_to_speak, debug=debug)
+                
+    def start_TTS_Server(self):
+        print("start_TTS_Server() called.")
+        print(self.setting.get_setting_value("VoiceSettings.engine"), self.setting.get_setting_value("VoiceSettings.VOICEVOX.autorun"), self.engine_process)
+        """設定に基づいてVOICEVOXサーバーを起動します。"""
+        if self.engine_process is None and \
+           self.setting.get_setting_value("VoiceSettings.engine") == "VOICEVOX" and \
+           self.setting.get_setting_value("VoiceSettings.VOICEVOX.autorun") == True:
+            
+            self.engine_process = TTS_VoiceVoxEngine.start_server(
+                self.setting.get_setting_value("VoiceSettings.VOICEVOX.path"),
+                self.setting.get_setting_value("VoiceSettings.VOICEVOX.usegpu"),
+                debug=self.debug
+            )
+        self.bus.publish("Start_TTS_Server", self.engine_process)
 
-    #ユーザのメッセージ送信
-    def _handle_user_message_send(self, message_from_input):
-        """TextFrameからユーザーメッセージが送信されたときの処理"""
-        if message_from_input: # message_from_input が空でないことを確認
-            formatted_message = "UserMessage: " + message_from_input
-            # このメソッドは TalkWindow に移動しました。UI クラスでは直接メッセージ送信処理は行いません。
-            # TalkWindow が master_controller を直接呼び出します。
-            pass # このメソッドは不要になりました
-
-    #キャラクター画像クリックを
     def _handle_character_click(self):
         """キャラクタークリック時の処理"""
-        # キャラクタークリック時のログは TalkWindow が開いていればそこに追加
         if self.talk_window and self.talk_window.winfo_exists() and self.talk_window.winfo_ismapped():
              self.talk_window.add_log("システム: キャラクターがクリックされました！")
 
-    def update_character_image(self, image_name): # メソッド名を変更: update_character -> update_character_image
-        """キャラクターの表示画像を更新します (CharacterLabelへ委譲)。"""
+    def update_character_image(self, image_name):
+        """キャラクターの表示画像を更新します。"""
         self.charaImg.update_image(image_name)
 
-    
     def start_drag(self, event):
         self.drag_item = event.widget
         self.start_x = event.x
@@ -162,6 +215,10 @@ class UI(tk.Tk):
             new_x = self.drag_item.winfo_x() + (event.x - self.start_x)
             new_y = self.drag_item.winfo_y() + (event.y - self.start_y)
             self.drag_item.place(x=new_x, y=new_y)
+
+    def _on_closing(self):
+        """ウィンドウの閉じるボタンが押されたときの処理"""
+        self.bus.publish("Req_ExitApp", False)
 
     @staticmethod
     def show_message_box(type, title:str, message:str)->bool:

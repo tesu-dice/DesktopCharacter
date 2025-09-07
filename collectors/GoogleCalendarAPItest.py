@@ -145,9 +145,16 @@ class GoogleScheduleControl:
 def main():
     try:
         gcal = GoogleScheduleControl()
-        # 今日の日記を作成（例）
-        today_str = datetime.date.today().strftime("%Y-%m-%d")
-        gcal.generate_daily_md(today_str)
+        
+        # 2025年6月1日から8月31日までの日付を生成
+        start_date = datetime.date(2025, 9, 1)
+        end_date = datetime.date(2025, 9, 6)
+        
+        current_date = start_date
+        while current_date <= end_date:
+            date_str = current_date.strftime("%Y-%m-%d")
+            gcal.generate_daily_md(date_str)
+            current_date += datetime.timedelta(days=1)
 
     except HttpError as error:
         print(f"API Error: {error}")

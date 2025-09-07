@@ -1,6 +1,8 @@
 import json
 import os
 from typing import Any, Dict, List, Optional, Union
+import logging
+logger = logging.getLogger(__name__)
 
 
 class SettingItem:
@@ -141,7 +143,12 @@ class UserSettings:
     def get_setting_value(self, path: str, default: Any = None) -> Any:
         """パスによって設定の値を取得します。"""
         item = self._settings_map.get(path)
-        return item.value if item else default
+        if item:
+            return item.value
+        else:
+            print("警告: パス '{path}' の設定が見つかりません。")
+            logger.warning(f"警告: パス '{path}' の設定が見つかりません。")
+            return "参照エラー"
 
     def set_setting_value(self, path: str, new_value: Any) -> bool:
         """
@@ -251,11 +258,11 @@ def read_configfile(filepath: str = "config.json") -> UserSettings:
         settings._populate_settings_map_with_merge(config_file_data, [])
 
     except FileNotFoundError:
-        print(f"情報: 設定ファイル '{filepath}' が見つかりません。デフォルト設定を使用します。")
+        logger.info(f"設定ファイル{filepath}が見つかりません。デフォルト設定を使用します。")
     except json.JSONDecodeError as e:
-        print(f"エラー: '{filepath}' から JSON をデコードできませんでした。{e}。デフォルト設定を使用します。")
+        logger.error(f"エラー: '{filepath}' から JSON をデコードできませんでした。{e}。デフォルト設定を使用します。")
     except Exception as e:
-        print(f"エラー: '{filepath}' の読み込み中に予期しないエラーが発生しました。{e}。デフォルト設定を使用します。")
+        logger.error(f"エラー: '{filepath}' の読み込み中に予期しないエラーが発生しました。{e}。デフォルト設定を使用します。")
     return settings
 
 
