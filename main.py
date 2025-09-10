@@ -72,11 +72,10 @@ class myapp():
 
 
         #ユーザからTalkWindowでメッセージが送信されたとき(UserMessage)
-        self.bus.subscribe("UserSendMessage", self.ui.talk_window.add_log)
-        self.bus.subscribe("UserSendMessage", self.AI_Manager.response)
+        self.bus.subscribe("MessageInput", self.ui.talk_window.add_log)
+        self.bus.subscribe("MessageInput", self.AI_Manager.response)
         self.bus.subscribe("AIGenerateMessage", self.ui.talk_window.add_log)
         self.bus.subscribe("AIGenerateMessage", self.ui.Reflecting_TextResponses) # UI側でスレッドセーフ化
-        #self.bus.subscribe("Req_AddTalkLog", self.ui.add_talk_log) # スレッドセーフなメソッドに変更
         
         #アプリケーションの終了
         self.bus.subscribe("Req_ExitApp", self.exit)
@@ -178,7 +177,7 @@ class myapp():
         
         if self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.on/off") == True:    
             if self.WinInfo.check_freetime():
-                self.SendMessage_toAI("ユーザー作業中...", debug=debug)
+                self.SendMessage_toAI("SYSTEM：ユーザー作業中...", debug=debug)
         self.update_id = self.ui.after(10000, self.update, debug)
 
     #入力テキストをAIに伝える
@@ -192,7 +191,7 @@ class myapp():
         if self.setting.get_setting_value("ApplicationSettings.Permisson.PlayingMedia") == True:
             m = "\n再生中のメディア：" + self.WinInfo.get_plaing_media(debug = debug + 1 if debug >= 0 else -1) 
         send_text = text + t + w + m
-        self.bus.publish("UserSendMessage", {"role": "user", "parts":[send_text]}, debug=debug)
+        self.bus.publish("MessageInput", {"role": "user", "parts":[send_text]}, debug=debug)
 
 
 

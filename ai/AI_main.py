@@ -54,7 +54,7 @@ class AI_Manager():
         
 
     def _initialize_client(self, debug=-1):
-        self.active_history_num = 5
+        self.active_history_num = self.setting.get_setting_value("LLMSettings.ActiveHistory") *2 -1
         """設定に基づいてAIクライアントを初期化または再初期化します。"""
         selected_service = self.setting.get_setting_value("LLMSettings.Service")
         logger.info(f"AIクライアントを初期化しています... サービス: {selected_service}")
@@ -106,9 +106,6 @@ class AI_Manager():
         max_history_length = 100
         if len(self.history) > max_history_length:
             self.history = self.history[-max_history_length:]
-
-        #トークウィンドウがあればテキストを追加
-        self.bus.publish("Req_AddTalkLog", input_dict)
         
 
     # キャラクター画像を読み込み、AIへ指示書として返す。
@@ -142,11 +139,12 @@ class AI_Manager():
         else:
             past_contents = self.history
         #返答の生成
-        response = self.AI_client.response(input_contents=self.init_prompt + past_contents, debug = debug)
-        self.add_talkhistory(input_dict, debug)
+        input_contents = self.init_prompt + past_contents
+        print(input_contents)
+        response = self.AI_client.response(input_contents=input_contents, debug = debug)
         print(response)
         output_dict = {"role": "model", "parts":[response["text"]], "token_count": response["token_count"]}
-
+        self.add_talkhistory(output_dict, debug)
         #イベント発行
         self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
         
