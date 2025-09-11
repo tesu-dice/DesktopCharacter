@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ollama API との連携方法</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Meiryo, 'Yu Gothic', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+            background-color: #f9f9f9;
+        }
+        h1, h2, h3 {
+            color: #005a9c;
+            border-bottom: 2px solid #005a9c;
+            padding-bottom: 5px;
+        }
+        h1 {
+            text-align: center;
+            border-bottom: none;
+        }
+        p {
+            margin-bottom: 1em;
+        }
+        a {
+            color: #0078d4;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .step {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .code {
+            background-color: #eef;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid #ccd;
+        }
+        .warning {
+            background-color: #fffbe6;
+            border: 1px solid #ffe58f;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        ol {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Ollama API との連携方法</h1>
+
+    <p>
+        このアプリケーションは、ローカル環境で大規模言語モデル（LLM）を実行できる「Ollama」と連携して、AI会話機能を利用することができます。
+        このドキュメントでは、Ollamaを導入し、アプリケーションと連携させるための手順を説明します。
+    </p>
+
+    <h2>ステップ1: Ollamaをインストールする</h2>
+    <div class="step">
+        <ol>
+            <li>まず、お使いのPCにOllamaがインストールされていない場合は、公式サイトからダウンロードしてインストールします。<br>
+                <strong><a href="https://ollama.com/" target="_blank">Ollama公式サイト</a></strong>
+            </li>
+            <li>お使いのOS（Windows, macOS, Linux）に合ったインストーラーをダウンロードし、画面の指示に従ってインストールを完了してください。</li>
+        </ol>
+    </div>
+
+    <h2>ステップ2: Ollamaで利用するモデルをセットアップする</h2>
+    <div class="step">
+        <ol>
+            <li>Ollamaをインストールしたら、次に会話に使用したいAIモデルをダウンロードします。コマンドプロンプト（またはターミナル）を開いて、以下のコマンドを実行します。</li>
+            <li>
+                例えば、Meta社の「Llama 2」モデルをダウンロードするには、次のコマンドを入力します。<br>
+                <div class="code">ollama run llama2</div>
+            </li>
+            <li>
+                コマンドを実行すると、モデルのダウンロードが開始されます。完了すると、コマンドラインでそのモデルと直接対話できるようになります。
+                <div class="warning">
+                    <strong>補足:</strong> 他にも様々なモデルが利用可能です。利用可能なモデルのリストは<a href="https://ollama.com/library" target="_blank">Ollamaのモデルライブラリ</a>で確認できます。
+                </div>
+            </li>
+        </ol>
+    </div>
+
+    <h2>ステップ3: アプリケーションにOllamaの設定を行う</h2>
+    <div class="step">
+        <ol>
+            <li>デスクトップキャラクターを右クリックして表示されるメニューから「<strong>設定</strong>」を選択し、設定ウィンドウを開きます。</li>
+            <li>設定ウィンドウの上部にある「<strong>AI</strong>」の選択肢から「<strong>Ollama</strong>」を選びます。</li>
+            <li>
+                「<strong>Ollama Settings</strong>」セクションで、以下の項目を設定します。
+                <ul>
+                    <li><strong>Ollama_base_url:</strong> Ollamaが動作しているURLを入力します。通常、Ollamaを自分のPCで動かしている場合は、デフォルトの <span class="code">http://localhost:11434</span> のままで問題ありません。</li>
+                    <li><strong>Ollama_model:</strong> ステップ2でセットアップしたモデル名（例: <span class="code">llama2</span>）を入力します。</li>
+                </ul>
+            </li>
+            <li>入力が完了したら、設定ウィンドウの下部にある「<strong>保存して閉じる</strong>」ボタンをクリックします。</li>
+        </ol>
+    </div>
+
+    <h2>設定完了</h2>
+    <p>以上で設定は完了です。ローカル環境で動作するAIとの会話機能が有効になります。</p>
+
+</body>
+</html>

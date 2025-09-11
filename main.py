@@ -97,7 +97,7 @@ class myapp():
             debug = debug + 1 if debug >= 0 else -1
         
         #リリースバージョンの確認
-        CURRENT_APP_VERSION = "1.0.1" # 現在のバージョンを設定
+        CURRENT_APP_VERSION = "1.0.2" # 現在のバージョンを設定
         _result = check_nowver_is_newestver("tesu-dice", "DesktopCharacter_forRelease", CURRENT_APP_VERSION)
         if _result[0] == False:
             print(f"新しいバージョンが利用可能です！ 最新バージョン: {_result[1]}, 現在のバージョン: {_result[2]}")

@@ -130,7 +130,10 @@ class AI_Manager():
     def response(self, input_dict : dict, debug: int = -1):
         #AIの指定がなかった場合
         if self.AI_client is None:
-            return {"text": "AIサービスが選択されていません。", "token_count": 0}
+            output_dict = {"role": "model", "parts":["AIサービスが選択されていません。"], "token_count": 0}
+            #イベント発行
+            self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
+            return
         
         #送信する会話履歴の処理
         self.add_talkhistory(input_dict, debug)
