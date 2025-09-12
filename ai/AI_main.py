@@ -143,9 +143,7 @@ class AI_Manager():
             past_contents = self.history
         #返答の生成
         input_contents = self.init_prompt + past_contents
-        print(input_contents)
         response = self.AI_client.response(input_contents=input_contents, debug = debug)
-        print(response)
         output_dict = {"role": "model", "parts":[response["text"]], "token_count": response["token_count"]}
         self.add_talkhistory(output_dict, debug)
         #イベント発行

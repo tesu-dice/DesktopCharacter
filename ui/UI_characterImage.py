@@ -33,7 +33,11 @@ class charaimg_controller():
     #キャラクター画像の読み取り
     def load_imgs(self):
         dir_path = f"立ち絵/{self.setting.get_setting_value('ApplicationSettings.CharacterImage.Folder')}/"
-        files = os.listdir(dir_path)
+        try :
+            files = os.listdir(dir_path)
+        except:
+            self.bus.publish("Req_PopUpMessage", "info", "エラーメッセージ", "立ち絵情報の取得に失敗しました。")
+            files = os.listdir("立ち絵/CHARAT-MONO/")
         #画像の名前と画像を適正サイズに変更して保存
         for f in files :
             image = Image.open(dir_path + f)  # 画像ファイル名を指定
