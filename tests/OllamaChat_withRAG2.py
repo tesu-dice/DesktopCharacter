@@ -59,7 +59,7 @@ def duckduckgo_search_tool(query, num_results=2):
     search_snippets = []
     try:
         with DDGS(timeout=10) as ddgs:
-            results = list(ddgs.text(query, region='jp-jp', max_results=num_results))
+            results = list(ddgs.text(query, region='jp-jp', safesearch="on", max_results=num_results))
             for item in results:
                 search_snippets.append(f"タイトル: {item.get('title', 'N/A')}\nURL: {item.get('href', 'N/A')}\nスニペット: {item.get('body', 'N/A')}\n")
                 print(f"タイトル: {item.get('title', 'N/A')}")
