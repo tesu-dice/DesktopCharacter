@@ -3,7 +3,8 @@ Windowsからデータを取得して受け渡す用のクラス
 
 """
 #ライブラリ
-import time
+import logging
+logger = logging.getLogger(__name__)
 import datetime
 import asyncio
 import win32gui #pip install pywin32
