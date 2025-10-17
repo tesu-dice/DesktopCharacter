@@ -224,11 +224,23 @@ def _setup_logging_info():
         WARNING: すぐには問題ないが、注意が必要なこと（「設定ファイルの一部が古い」など）
         ERROR: 処理が続行できないような重大なエラー
     """
+    #パス取得
+    """
+    実行中のスクリプトが存在するディレクトリの絶対パスを取得する。
+    PyInstallerなどでコンパイルされた場合にも対応できる書き方。
+    """
+    if getattr(sys, 'frozen', False):
+        # 実行ファイル (.exe) のパスを取得
+        basedir = os.path.dirname(sys.executable)
+    else:
+        # Pythonスクリプトのパスを取得
+        basedir = os.path.dirname(os.path.abspath(__file__))
+    #print("logファイルの保存先ディレクトリ=", basedir)
     #ログの基本設定
     logging.basicConfig(
         level=logging.INFO,  # DEBUGレベル以上のログをすべて記録する
         format='%(asctime)s - %(levelname)s - [%(name)s] %(message)s',
-        filename='application.log', # ログをこのファイルに出力する
+        filename=basedir + 'application.log', # ログをこのファイルに出力する
         encoding='utf-8',
         filemode='w' # 起動時にファイルを上書き（'a'にすると追記）
     )
