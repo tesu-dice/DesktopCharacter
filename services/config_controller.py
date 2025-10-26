@@ -359,6 +359,11 @@ def get_default_data() -> Dict[str, Any]:
                             "name": "再生中のメディア",
                             "type": "bool",
                             "value": True
+                        },
+                        "UserActivityLog": {
+                            "name": "ユーザーアクティビティログ",
+                            "type": "bool",
+                            "value": True
                         }
                     }
                 }

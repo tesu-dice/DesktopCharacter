@@ -45,6 +45,7 @@ class win_info_collector():
     #再生中のメディアを取得
     def get_plaing_media(self, debug=-1):
         #実際に動作するのは_get_media_info(). 非同期的に動作するので分割。self側で履歴管理とかするならここで。
+        print("get_plaing_media()", debug)
         return asyncio.run(_get_media_info(debug=debug))
 
     

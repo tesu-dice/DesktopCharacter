@@ -12,6 +12,7 @@ import time
 #プログラム
 from services import WindowsInfoCollecter
 from services.config_controller import UserSettings, read_configfile
+from services import UserDataLogger
 
 from services import Event_Bus
 from ui import UI_main
@@ -48,6 +49,7 @@ class myapp():
         self.bus = Event_Bus.EventBus()
             #各種サービス要素
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.bus, self.setting, debug=debug)
+        self.UserDataLogger = UserDataLogger.UserActivityManager(storage_dir="user_logs")
         self.AI_Manager = AI_main.AI_Manager(self.bus, self.setting, TalkHistory, debug=debug)
         self.ui = UI_main.UI(self.bus, self.setting, debug=debug)
         #イベントバスへの購読設定
@@ -58,6 +60,7 @@ class myapp():
         
         #アプリケーション動作開始
         self.bus.publish("application start")
+        self.mm_last = None # 同じ時刻で何度も処理しないためのint分
         self.update(debug=debug)
         
     #EventBusにおける購読処理の初期化
@@ -77,6 +80,13 @@ class myapp():
         self.bus.subscribe("AIGenerateMessage", self.ui.talk_window.add_log)
         self.bus.subscribe("AIGenerateMessage", self.ui.Reflecting_TextResponses) # UI側でスレッドセーフ化
         
+        #ユーザデータの記録
+        self.bus.subscribe_workflow("Req_UserActivityLog", handler=self.WinInfo.get_activate_window, response_event="Req_UserActivityLog_win")
+        self.bus.subscribe_workflow("Req_UserActivityLog", handler=self.WinInfo.get_plaing_media, response_event="Req_UserActivityLog_media")
+        self.bus.subscribe_workflow("Req_UserActivityLog", handler=self.WinInfo.get_datetime, response_event="Req_UserActivityLog_time")
+        self.bus.subscribe_when(["Req_UserActivityLog_time","Req_UserActivityLog_win", "Req_UserActivityLog_media"], self.UserDataLogger.add_userlog)
+
+
         #アプリケーションの終了
         self.bus.subscribe("Req_ExitApp", self.exit)
 
@@ -170,15 +180,29 @@ class myapp():
     #状態監視の実行
     def update(self, debug = -1):
         print(self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.Time"))
+        #デバック処理
         if debug >= 0:
             indent = "  " * debug
             print(f"{indent}main.py update() called. activespeak={self.setting.get_setting_value('ApplicationSettings.ActiveSpeak.on/off')}")
             debug = debug + 1 if debug >= 0 else -1
-        
+        #経過時間毎の処理
         if self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.on/off") == True:    
             if self.WinInfo.check_freetime():
                 self.SendMessage_toAI("SYSTEM：ユーザー作業中...", debug=debug)
-        self.update_id = self.ui.after(10000, self.update, debug)
+        #時間依存の処理
+        time = self.WinInfo.get_datetime()
+        mm_now = int(time.split(":")[1])
+        if mm_now % 5 == 0 and self.mm_last != mm_now:#現在時刻の分が5で割れるかつ前の処理時刻でないか確認
+            print("5分に一回の処理です。")
+            self.mm_last = mm_now
+            #ユーザアクティビティログの要求
+            if self.setting.get_setting_value("ApplicationSettings.Permisson.UserActivityLog") == True:
+                self.bus.publish("Req_UserActivityLog")
+        #テスト用
+        self.bus.publish("Req_UserActivityLog")
+
+        #繰り返し処理
+        self.update_id = self.ui.after(10*1000, self.update, debug)
 
     #入力テキストをAIに伝える
     def SendMessage_toAI(self, text, debug = -1):
