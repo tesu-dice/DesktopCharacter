@@ -341,7 +341,7 @@ def get_default_data() -> Dict[str, Any]:
                         }
                     }
                 },
-                "Permisson": {
+                "Permission": {
                     "name": "アプリでの利用を許可する項目",
                     "type": "section",
                     "children": {

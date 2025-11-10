@@ -128,9 +128,9 @@ class UI(tk.Toplevel):
             if full_path == "ApplicationSettings.Model":
                 item_obj.options = self.app.AI_Manager.get_models()
             if full_path == "ApplicationSettings.CharacterImage.Folder":
-                item_obj.options = get_CharacterFolders()
+                item_obj.options = get_CharacterFolders()   
             elif full_path == "VoiceSettings.VOICEVOX.Model":
-                if self.app.engine_process is not None:
+                if self.parent_ui.engine_process is not None:
                     item_obj.options = TTS_VoiceVoxEngine.get_speakers()
                 else :
                     item_obj.options = ["サーバを起動していません。"]
@@ -175,15 +175,15 @@ class UI(tk.Toplevel):
                         func_to_call = get_CharacterFolders
                         #AIの選択
                     elif full_path == "LLMSettings.geminiAPI.model":
-                        gemini = AI_geminiAPI.geminiAI(self.app.setting, None, debug=-1)
+                        gemini = AI_geminiAPI.geminiAI(self.settings, debug=-1)
                         func_to_call = gemini.get_models
                     elif full_path == "LLMSettings.Ollama.model":
-                        ollama = AI_ollama.ollamaAI(self.app.setting, None, debug=-1)
+                        ollama = AI_ollama.ollamaAI(self.settings, debug=-1)
                         func_to_call = ollama.get_models
 
                         #音声モデルの選択
                     elif full_path == "VoiceSettings.VOICEVOX.Model":
-                        if self.app.engine_process is not None:
+                        if self.parent_ui.engine_process is not None:
                             func_to_call = TTS_VoiceVoxEngine.get_speakers
                         else:
                             # サーバーが起動していない場合は、その旨を表示して終了

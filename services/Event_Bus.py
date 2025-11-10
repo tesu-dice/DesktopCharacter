@@ -65,12 +65,13 @@ class EventBus:
                         # ハンドラを実行して結果を取得
                         result = handler(*thread_args, **thread_kwargs)
                         
-                        # 元の引数を引き継ぎつつ、結果を'data'として追加
-                        response_kwargs = thread_kwargs.copy()
-                        response_kwargs['data'] = result
-                        
-                        # レスポンスイベントを発行
-                        self.publish(response_event, **response_kwargs)
+                        # 戻り値をそのまま次のイベントに渡す
+                        if isinstance(result, tuple):
+                            self.publish(response_event, *result)
+                        elif result is not None:
+                            self.publish(response_event, result)
+                        else:
+                            self.publish(response_event)
                         
                     except Exception as e:
                         print(f"--- WORKFLOW ERROR in event '{event_type}' ---")
@@ -107,23 +108,27 @@ class EventBus:
     def _check_conditional_listeners(self, published_event_type, *args, **kwargs):
         for key, config in self._conditional_listeners.items():
             if published_event_type in config['required_events']:
-                # subscribe_workflowからのレスポンスイベントの場合、kwargs['data']に結果が入っている
-                # subscribe_whenは、この'data'の値を直接callbackに渡したい
-                event_data = kwargs.get('data')
-                config['received_data'][published_event_type] = (event_data,)
+                # イベントから渡された引数を保存
+                config['received_data'][published_event_type] = {'args': args, 'kwargs': kwargs}
                 
                 if len(config['received_data']) == len(config['required_events']):
                     print(f"All required events {key} have been received. Executing callback.")
                     
-                    ordered_args = []
+                    # イベント順序に従って引数を整理
+                    final_args = []
+                    final_kwargs = {}
                     for event in config['event_order']:
-                        ordered_args.extend(config['received_data'][event])
+                        data = config['received_data'][event]
+                        final_args.extend(data['args'])
+                        final_kwargs.update(data['kwargs'])
                     
                     callback = config['callback']
-                    thread = threading.Thread(target=callback, args=ordered_args)
+                    # スレッドでコールバックを実行
+                    thread = threading.Thread(target=callback, args=final_args, kwargs=final_kwargs)
                     thread.daemon = True
                     thread.start()
                     
+                    # 使用済みのデータをクリア
                     config['received_data'].clear()
 
 if __name__ == "__main__":

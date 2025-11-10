@@ -49,7 +49,7 @@ class myapp():
         self.bus = Event_Bus.EventBus()
             #各種サービス要素
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.bus, self.setting, debug=debug)
-        self.UserDataLogger = UserDataLogger.UserActivityManager(storage_dir="user_logs")
+        self.UserDataLogger = UserDataLogger.UserActivityManager(self.bus, storage_dir="user_logs")
         self.AI_Manager = AI_main.AI_Manager(self.bus, self.setting, TalkHistory, debug=debug)
         self.ui = UI_main.UI(self.bus, self.setting, debug=debug)
         #イベントバスへの購読設定
@@ -61,7 +61,7 @@ class myapp():
         #アプリケーション動作開始
         self.bus.publish("application start")
         self.mm_last = None # 同じ時刻で何度も処理しないためのint分
-        self.update(debug=debug)
+        self.update_id = self.ui.after(10*1000, self.update, debug)
         
     #EventBusにおける購読処理の初期化
     def _setup_event_listeners(self):
@@ -81,11 +81,19 @@ class myapp():
         self.bus.subscribe("AIGenerateMessage", self.ui.Reflecting_TextResponses) # UI側でスレッドセーフ化
         
         #ユーザデータの記録
+            #5分毎のユーザアクティビティの記録
         self.bus.subscribe_workflow("Req_UserActivityLog", handler=self.WinInfo.get_activate_window, response_event="Req_UserActivityLog_win")
         self.bus.subscribe_workflow("Req_UserActivityLog", handler=self.WinInfo.get_plaing_media, response_event="Req_UserActivityLog_media")
         self.bus.subscribe_workflow("Req_UserActivityLog", handler=self.WinInfo.get_datetime, response_event="Req_UserActivityLog_time")
         self.bus.subscribe_when(["Req_UserActivityLog_time","Req_UserActivityLog_win", "Req_UserActivityLog_media"], self.UserDataLogger.add_userlog)
-
+            #一時間毎の要約作成
+        self.bus.subscribe_workflow("Req_UserHourSummaryLog", handler=self.UserDataLogger.create_hourly_summary, response_event="Req_UserHourSummaryLog_context")
+        self.bus.subscribe_workflow("Req_UserHourSummaryLog_context", handler=self.AI_Manager.response_onetime, response_event="Req_UserHourSummaryLog_response")
+        self.bus.subscribe_when(["Req_UserHourSummaryLog", "Req_UserHourSummaryLog_response"], self.UserDataLogger.add_userhourlog)
+            #一日の要約作成
+        self.bus.subscribe_workflow("Req_UserDailySummaryLog", handler=self.UserDataLogger.create_daily_summary, response_event="Req_UserDailySummaryLog_context")
+        self.bus.subscribe_workflow("Req_UserDailySummaryLog_context", handler=self.AI_Manager.response_onetime, response_event="Req_UserDailySummaryLog_response")
+        self.bus.subscribe_when(["Req_UserDailySummaryLog_time", "Req_UserDailySummaryLog_response"], self.UserDataLogger.add_userdaylog)
 
         #アプリケーションの終了
         self.bus.subscribe("Req_ExitApp", self.exit)
@@ -124,7 +132,7 @@ class myapp():
             _result = self.AI_Manager.test_connection(debug=debug)
             _start_info_texts += f"{('成功' if _result[0] else '失敗')}\n\n"
             if _result[0] == False:
-                _start_info_error += f"GeminiAPIの接続に失敗しました。:\n{_result[1]}\n\n"
+                _start_info_error += f"自然言語AIサービスとの接続に失敗しました。:\n{_result[1]}\n\n"
 
         #VoiceVoxサーバの起動
         if serverid == None:
@@ -179,7 +187,7 @@ class myapp():
     
     #状態監視の実行
     def update(self, debug = -1):
-        print(self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.Time"))
+        print("update called.  ",self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.Time"),"ms毎に会話します。")
         #デバック処理
         if debug >= 0:
             indent = "  " * debug
@@ -195,12 +203,15 @@ class myapp():
         if mm_now % 5 == 0 and self.mm_last != mm_now:#現在時刻の分が5で割れるかつ前の処理時刻でないか確認
             print("5分に一回の処理です。")
             self.mm_last = mm_now
-            #ユーザアクティビティログの要求
-            if self.setting.get_setting_value("ApplicationSettings.Permisson.UserActivityLog") == True:
+            #ユーザアクティビティログの要求　　　　　　　　　　　　　　　　　　　　　　　　 Permisson
+            allow_time_access = self.setting.get_setting_value("ApplicationSettings.Permission.CurrentTime")
+            allow_logging_access = self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog")
+            if allow_time_access == True and allow_logging_access == True:
                 self.bus.publish("Req_UserActivityLog")
+                
         #テスト用
-        self.bus.publish("Req_UserActivityLog")
 
+        
         #繰り返し処理
         self.update_id = self.ui.after(10*1000, self.update, debug)
 
@@ -208,11 +219,11 @@ class myapp():
     def SendMessage_toAI(self, text, debug = -1):
         #会話送信テキストの準備と送信
         t, w, m = "", "", ""
-        if self.setting.get_setting_value("ApplicationSettings.Permisson.CurrentTime") == True:
+        if self.setting.get_setting_value("ApplicationSettings.Permission.CurrentTime") == True:
             t = "\n現在時刻：" + self.WinInfo.get_datetime()
-        if self.setting.get_setting_value("ApplicationSettings.Permisson.ActiveWindow") == True:
+        if self.setting.get_setting_value("ApplicationSettings.Permission.ActiveWindow") == True:
             w = "\nアクティブなウィンドウ：" + self.WinInfo.get_activate_window()
-        if self.setting.get_setting_value("ApplicationSettings.Permisson.PlayingMedia") == True:
+        if self.setting.get_setting_value("ApplicationSettings.Permission.PlayingMedia") == True:
             m = "\n再生中のメディア：" + self.WinInfo.get_plaing_media(debug = debug + 1 if debug >= 0 else -1) 
         send_text = text + t + w + m
         self.bus.publish("MessageInput", {"role": "user", "parts":[send_text]}, debug=debug)

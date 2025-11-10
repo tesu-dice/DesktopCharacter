@@ -149,6 +149,24 @@ class AI_Manager():
         #イベント発行
         self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
         
+    def response_onetime(self, text, debug = -1):
+        """
+        LLMに入力された文字列を一度だけ応答してもらう。返すのも単純な文字列。
+        """
+        if self.AI_client is None:
+            output_dict = {"role": "model", "parts":["AIサービスが選択されていません。"], "token_count": 0}
+            #イベント発行
+            self.bus.publish("AI.response_onetime end", output_dict, debug=debug)
+            return
+
+        #返答の生成
+        input = [{"role": "user", "parts":[text]}]
+        
+        response = self.AI_client.response(input_contents=input, debug = debug)
+        output_dict = {"role": "model", "parts":[response["text"]], "token_count": response["token_count"]}
+        #self.bus.publish("AI.response_onetime end", output_dict, debug=debug)
+        return output_dict["parts"]
+
 
 
 
