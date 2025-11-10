@@ -147,8 +147,8 @@ def main():
         gcal = GoogleScheduleControl()
         
         # 2025年6月1日から8月31日までの日付を生成
-        start_date = datetime.date(2025, 9, 1)
-        end_date = datetime.date(2025, 9, 6)
+        start_date = datetime.date(2025, 9, 6)
+        end_date = datetime.date(2025, 10, 30)
         
         current_date = start_date
         while current_date <= end_date:
