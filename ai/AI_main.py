@@ -36,6 +36,7 @@ from ai import AI_geminiAPI
 from ai import AI_ollama
 from services.Event_Bus import EventBus
 from services.config_controller import UserSettings
+from services.UserDataLogger import get_userhourlog
 
 
 
@@ -143,6 +144,29 @@ class AI_Manager():
             past_contents = self.history
         #返答の生成
         input_contents = self.init_prompt + past_contents
+        #ユーザアクティビティのログおよび活用機能
+        if self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog"):
+            _input = input_dict["parts"]
+            _text =     f"あなたはアシスタントAIです。以下の例に従って出力を行い、ユーザの入力を確認して必要なユーザの活動記録について示してください。\
+                        記録は日と時刻に依存して作成されています。もしも必要がない場合は「None」と返してください。\n\
+                        # 応答の例：\n\
+                        2025年11月10日の要約が欲しいとき->2025-11-10\n\
+                        2025年11月10日18時の要約が欲しいとき->2025-11-10 18\n\
+                        # ユーザの入力\n\
+                        {_input}"
+            _requesttext = str(self.response_onetime(_text))
+            #要求に応じてコンテキストの追加
+            addtext = get_userhourlog(time_str=_requesttext)
+            #生成用のコンテキスト更新
+            input_contents[-1]["parts"][0] += f"\n# ユーザ記録の参照情報\n{addtext}"
+            print();print(_text);print()
+            print();print(_requesttext);print()
+            print();print(addtext);print()
+
+            print();print(input_contents[-1]["parts"])
+
+
+            
         response = self.AI_client.response(input_contents=input_contents, debug = debug)
         output_dict = {"role": "model", "parts":[response["text"]], "token_count": response["token_count"]}
         self.add_talkhistory(output_dict, debug)
@@ -163,7 +187,7 @@ class AI_Manager():
         input = [{"role": "user", "parts":[text]}]
         
         response = self.AI_client.response(input_contents=input, debug = debug)
-        output_dict = {"role": "model", "parts":[response["text"]], "token_count": response["token_count"]}
+        output_dict = {"role": "model", "parts":response["text"], "token_count": response["token_count"]}
         #self.bus.publish("AI.response_onetime end", output_dict, debug=debug)
         return output_dict["parts"]
 

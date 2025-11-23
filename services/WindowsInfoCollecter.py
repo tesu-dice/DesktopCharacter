@@ -135,7 +135,9 @@ async def _get_media_info(debug = -1) -> str:
     else:
         return "再生中のメディアなし"
         
-
+def get_datetime():
+        now = datetime.datetime.now()
+        return now.strftime(f"%Y-%m-%d %H:%M")
 
 
 if __name__ == "__main__":

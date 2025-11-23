@@ -18,6 +18,7 @@ from services import Event_Bus
 from ui import UI_main
 from ai import AI_main
 from services.release_check import check_nowver_is_newestver
+from services.WindowsInfoCollecter import get_datetime
 from ui.TTS_VoiceVoxEngine import start_server
 
 
@@ -49,7 +50,7 @@ class myapp():
         self.bus = Event_Bus.EventBus()
             #各種サービス要素
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.bus, self.setting, debug=debug)
-        self.UserDataLogger = UserDataLogger.UserActivityManager(self.bus, storage_dir="user_logs")
+        self.UserDataLogger = UserDataLogger.UserActivityManager(self.bus)
         self.AI_Manager = AI_main.AI_Manager(self.bus, self.setting, TalkHistory, debug=debug)
         self.ui = UI_main.UI(self.bus, self.setting, debug=debug)
         #イベントバスへの購読設定
@@ -187,7 +188,7 @@ class myapp():
     
     #状態監視の実行
     def update(self, debug = -1):
-        print("update called.  ",self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.Time"),"ms毎に会話します。")
+        print("update called.  ",self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.Time"),"秒毎に会話します。")
         #デバック処理
         if debug >= 0:
             indent = "  " * debug
@@ -265,21 +266,29 @@ def _setup_logging_info():
     PyInstallerなどでコンパイルされた場合にも対応できる書き方。
     """
     if getattr(sys, 'frozen', False):
-        # 実行ファイル (.exe) のパスを取得
         basedir = os.path.dirname(sys.executable)
     else:
-        # Pythonスクリプトのパスを取得
         basedir = os.path.dirname(os.path.abspath(__file__))
-    #print("logファイルの保存先ディレクトリ=", basedir)
     #ログの基本設定
-    logging.basicConfig(
-        level=logging.INFO,  # DEBUGレベル以上のログをすべて記録する
-        format='%(asctime)s - %(levelname)s - [%(name)s] %(message)s',
-        filename=basedir + 'application.log', # ログをこのファイルに出力する
-        encoding='utf-8',
-        filemode='w' # 起動時にファイルを上書き（'a'にすると追記）
-    )
-    
+    log_filepath = os.path.join(basedir, 'application.log')# ログファイルのフルパスを安全に作成
+    # 1. ルートロガーを取得
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)  # アプリケーション全体の基本レベル
+
+    # 2. 既存のハンドラを一度すべてクリアする（ライブラリによる設定をリセット）
+    if root_logger.hasHandlers():
+        root_logger.handlers.clear()
+    # 3. ファイル出力用のハンドラを新規作成
+    # mode='w' で、起動時にファイルを上書き（新規作成）します
+    file_handler = logging.FileHandler(log_filepath, mode='w', encoding='utf-8')
+    # 4. ログの書式（フォーマット）を定義
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - [%(name)s] %(message)s')
+    # 5. ハンドラに書式をセット
+    file_handler.setFormatter(formatter)
+
+    # 6. ルートロガーに、設定済みのハンドラを追加
+    root_logger.addHandler(file_handler)
+
     #自分のモジュールは個別で設定する。
     logging.getLogger('ai').setLevel(logging.DEBUG)
     logging.getLogger("collectors").setLevel(logging.DEBUG)

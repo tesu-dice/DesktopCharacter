@@ -8,7 +8,8 @@
 import json
 import os
 from datetime import datetime
-from collections import defaultdict
+import logging
+logger = logging.getLogger(__name__)
 
 from services import Event_Bus
 
@@ -25,7 +26,7 @@ class UserActivityManager:
     日ごとのJSONファイル（YYYYMMDD.json）にログを保存し、
     時間ごとのサマリーや日ごとのサマリーを管理する機能を提供します。
     """
-    def __init__(self,bus: Event_Bus.EventBus,storage_dir: str = "."):
+    def __init__(self,bus: Event_Bus.EventBus):
         """
         コンストラクタ。
 
@@ -33,14 +34,14 @@ class UserActivityManager:
             storage_dir (str): JSONファイルを保存するディレクトリ。
         """
         self.bus = bus
-        self.storage_dir = storage_dir
+        self.storage_dir = "user_logs"
         os.makedirs(self.storage_dir, exist_ok=True)
         self.filepath = self._get_filepath_for_today()
         self._initialize_json_if_needed()
 
     def _get_filepath_for_today(self) -> str:
         """今日の日付に基づいたJSONファイルのパスを生成します。"""
-        today_str = datetime.now().strftime("%Y%m%d")
+        today_str = datetime.now().strftime("%Y-%m-%d")
         return os.path.join(self.storage_dir, f"{today_str}.json")
 
     def _initialize_json_if_needed(self):
@@ -55,8 +56,18 @@ class UserActivityManager:
             }
             self._save_data(initial_data)
 
-    def _load_data(self) -> dict:
+    def _load_data(self, day:str = "") -> dict:
         """JSONファイルからデータを読み込みます。"""
+        if day != "":#ロードするデータの日付が指定されている場合
+            try:
+                with open(day+".json", 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except (FileNotFoundError, json.JSONDecodeError):
+                # ファイルが破損または存在しない場合は初期化
+                self._initialize_json_if_needed()
+                return self._load_data()
+
+
         try:
             with open(self.filepath, 'r', encoding='utf-8') as f:
                 return json.load(f)
@@ -97,7 +108,6 @@ class UserActivityManager:
         if time.split(" ")[1] == "23:55":
             self.bus.publish("Req_UserDailySummaryLog", time)
         
-
     def add_userhourlog(self, time:str, text:str):
         """
         LLMで生成された文章を記録する
@@ -175,18 +185,14 @@ class UserActivityManager:
         #形式変換
         llm_input_list = json.dumps(target_logs, indent=2, ensure_ascii=False)   
         
-        request_text = f"\
-        # 役割\
-        あなたはユーザのPC利用ログを分析し、反省・改善の機会を提供する行動アナリストです。\n\
-        以下の一時間のユーザアクティビティについて5行程度の文章で具体的にまとめてください。\n\
-        {llm_input_list}"
+        request_text = f"次のユーザのアクティビティを短く要約してください。\n{llm_input_list}"
         return request_text
 
     def create_daily_summary(self, time:str):
         """
         その日の全てのログから日次要約を生成し、保存します。
         """
-        data = self._load_data()
+        data = self._load_data(day=time)
         all_logs = data["logs"]
         
         if not all_logs:
@@ -196,9 +202,50 @@ class UserActivityManager:
         #形式変換
         llm_input_list = json.dumps(all_logs, indent=2, ensure_ascii=False)   
         
-        request_text = f"次のユーザのアクティビティを要約してください。\n{llm_input_list}"
+        request_text = f"次のユーザのアクティビティを短く要約してください。\n{llm_input_list}"
         return request_text
-        
+    
+# 外部からユーザログへのアクセスを求める際に使う
+def get_userhourlog(time_str: str):
+    """
+    指定された日付または日時のログを取得します。
+    Args: time_str (str): "YYYY-MM-DD" または "YYYY-MM-DD HH" の形式の文字列。
+    Returns: str: 見つかったログの要約テキスト。見つからない場合はメッセージを返す。
+    """
+    parts = time_str.split(" ")
+    date_part = parts[0]  # "YYYY-MM-DD"
+    hour_part = parts[1] if len(parts) > 1 else None  # "HH" または None
+
+    # "YYYY-MM-DD" 形式を "YYYYMMDD" 形式に変換
+    try:
+        date_obj = datetime.strptime(date_part, '%Y-%m-%d')
+        day_for_load = date_obj.strftime('%Y-%m-%d')
+    except ValueError:
+        logger.error("日付の形式が正しくありません。'YYYY-MM-DD'形式で指定してください。")
+
+    # 指定日のログデータを読み込む
+
+    try:
+        with open("user_logs/" + day_for_load + ".json", 'r', encoding='utf-8') as f:
+            data =  json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        logger.error(f"ユーザアクティビティのログファイルを参照できませんでした。{day_for_load}.json")
+        return "応答に有効な記録データはありませんでした。"
+
+    if hour_part is None:
+        # 日付のみが指定された場合、その日の総合サマリーを返す
+        return data.get("daylogs", {}).get("summary", f"{time_str}のサマリーはありません。")
+    else:
+        # 日付と時間が指定された場合、該当する時間のサマリーを探す
+        hourlogs = data.get("hourlogs", [])
+        for log in hourlogs:
+            if log.get("time") == time_str:
+                return log.get("summary", f"{time_str}の要約テキストはありません。")
+        return f"{time_str}時のサマリーは見つかりませんでした。"
+    
+
+            
+
 
 
 
