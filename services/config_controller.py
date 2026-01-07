@@ -146,8 +146,8 @@ class UserSettings:
         if item:
             return item.value
         else:
-            print("警告: パス '{path}' の設定が見つかりません。")
-            logger.warning(f"警告: パス '{path}' の設定が見つかりません。")
+            print(f"警告: パス '{path}' の設定が見つかりません。")
+            logger.error(f"警告: パス '{path}' の設定が見つかりません。")
             return "参照エラー"
 
     def set_setting_value(self, path: str, new_value: Any) -> bool:
@@ -361,7 +361,7 @@ def get_default_data() -> Dict[str, Any]:
                             "value": True
                         },
                         "UserActivityLog": {
-                            "name": "ユーザーアクティビティログ",
+                            "name": "ユーザーアクティビティログの記録とその閲覧",
                             "type": "bool",
                             "value": True
                         }

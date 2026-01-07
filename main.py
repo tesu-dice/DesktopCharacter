@@ -23,6 +23,18 @@ from ui.TTS_VoiceVoxEngine import start_server
 
 
 
+#パス取得
+"""
+実行中のスクリプトが存在するディレクトリの絶対パスを取得する。
+PyInstallerなどでコンパイルされた場合にも対応できる書き方。
+"""
+if getattr(sys, 'frozen', False):
+    basedir = os.path.dirname(sys.executable)
+else:
+    basedir = os.path.dirname(os.path.abspath(__file__))
+
+
+
 class myapp():
     def __init__(self, engine_process = None, TalkHistory = [], debug = -1):
         #初期化
@@ -50,7 +62,7 @@ class myapp():
         self.bus = Event_Bus.EventBus()
             #各種サービス要素
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.bus, self.setting, debug=debug)
-        self.UserDataLogger = UserDataLogger.UserActivityManager(self.bus)
+        self.UserDataLoger = UserDataLogger.UserActivityManager(self.bus, dir = basedir)
         self.AI_Manager = AI_main.AI_Manager(self.bus, self.setting, TalkHistory, debug=debug)
         self.ui = UI_main.UI(self.bus, self.setting, debug=debug)
         #イベントバスへの購読設定
@@ -75,34 +87,32 @@ class myapp():
 
 
 
-        #ユーザからTalkWindowでメッセージが送信されたとき(UserMessage)
-        self.bus.subscribe("MessageInput", self.ui.talk_window.add_log)
-        self.bus.subscribe("MessageInput", self.AI_Manager.response)
-        self.bus.subscribe("AIGenerateMessage", self.ui.talk_window.add_log)
-        self.bus.subscribe("AIGenerateMessage", self.ui.Reflecting_TextResponses) # UI側でスレッドセーフ化
+        #会話用の入力からの流れ(RAG機能OFFなら途中飛ばす。)
+        self.bus.subscribe("MessageInput", self.ui.talk_window.add_log)#入力文字のUI表示
+        self.bus.subscribe("MessageInput", self.Check_responseMode)#RAGのON/OFFの確認
+        self.bus.subscribe_when(["MessageInput","Response_RAGisOFF"], self.AI_Manager.response)#RAGがOFFの際のテキスト生成
+        self.bus.subscribe_when(["MessageInput","Response_RAGisON"], self.AI_Manager.make_rag_request)#RAG参照用のリクエスト生成
+        self.bus.subscribe("Req_RAGInfo", self.UserDataLoger.handle_rag_request)#RAG情報の参照可能か確認してデータの準備や完了通知の指示
+        self.bus.subscribe_when(["MessageInput","RAGisReady"], self.AI_Manager.response_withRAG)#RAGがONの際のテキスト生成
+        self.bus.subscribe("AIGenerateMessage", self.ui.talk_window.add_log)#会話テキストの生成を受けてUIに表示、RAGのON/OFFに関わらずここで合流。
+        self.bus.subscribe("AIGenerateMessage", self.ui.Reflect_Text) #TTSと立ち絵へ反映
+
         
         #ユーザデータの記録
             #5分毎のユーザアクティビティの記録
         self.bus.subscribe_workflow("Req_UserActivityLog", handler=self.WinInfo.get_activate_window, response_event="Req_UserActivityLog_win")
         self.bus.subscribe_workflow("Req_UserActivityLog", handler=self.WinInfo.get_plaing_media, response_event="Req_UserActivityLog_media")
         self.bus.subscribe_workflow("Req_UserActivityLog", handler=self.WinInfo.get_datetime, response_event="Req_UserActivityLog_time")
-        self.bus.subscribe_when(["Req_UserActivityLog_time","Req_UserActivityLog_win", "Req_UserActivityLog_media"], self.UserDataLogger.add_userlog)
-            #一時間毎の要約作成
-        self.bus.subscribe_workflow("Req_UserHourSummaryLog", handler=self.UserDataLogger.create_hourly_summary, response_event="Req_UserHourSummaryLog_context")
-        self.bus.subscribe_workflow("Req_UserHourSummaryLog_context", handler=self.AI_Manager.response_onetime, response_event="Req_UserHourSummaryLog_response")
-        self.bus.subscribe_when(["Req_UserHourSummaryLog", "Req_UserHourSummaryLog_response"], self.UserDataLogger.add_userhourlog)
-            #一日の要約作成
-        self.bus.subscribe_workflow("Req_UserDailySummaryLog", handler=self.UserDataLogger.create_daily_summary, response_event="Req_UserDailySummaryLog_context")
-        self.bus.subscribe_workflow("Req_UserDailySummaryLog_context", handler=self.AI_Manager.response_onetime, response_event="Req_UserDailySummaryLog_response")
-        self.bus.subscribe_when(["Req_UserDailySummaryLog_time", "Req_UserDailySummaryLog_response"], self.UserDataLogger.add_userdaylog)
+        self.bus.subscribe_when(["Req_UserActivityLog_time","Req_UserActivityLog_win", "Req_UserActivityLog_media"], self.UserDataLoger.add_userlog)
+            #一時間毎, 一日毎の要約作成
+        self.bus.subscribe_workflow("Req_UserSummaryLog_context", handler=self.AI_Manager.response_onetime, response_event="Req_UserSummaryLog_response")
+        self.bus.subscribe_when(["Req_UserSummaryLog_TimeAndScope", "Req_UserSummaryLog_response"], self.UserDataLoger.add_summary_log)
 
         #アプリケーションの終了
         self.bus.subscribe("Req_ExitApp", self.exit)
 
         #設定の更新
         self.bus.subscribe("SettingsUpdated", self.on_settings_updated)
-
-
 
     #アプリケーション起動時の送信メッセージ
     def app_start_message(self, serverid, debug = -1):
@@ -155,13 +165,13 @@ class myapp():
         #エラーメッセージ
         if _start_info_error != "":
             self.bus.publish("Req_PopUpMessage", "info", "エラーメッセージ", _start_info_error)
-
+    
+    #設定を更新した場合の処理
     def on_settings_updated(self, new_settings: UserSettings):
         """設定が更新されたときに呼び出され、アプリケーション全体の設定を更新します。"""
         logging.info("アプリケーション全体の設定を更新します...")
         self.setting = new_settings
         logging.info("アプリケーション全体の設定更新が完了しました。")
-
 
     #アプリケーションの終了、再起動
     def exit(self, _reboot = False, debug = -1):
@@ -184,8 +194,6 @@ class myapp():
                 python = sys.executable
                 os.execl(python, python, *sys.argv)
         
-            
-    
     #状態監視の実行
     def update(self, debug = -1):
         print("update called.  ",self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.Time"),"秒毎に会話します。")
@@ -204,7 +212,7 @@ class myapp():
         if mm_now % 5 == 0 and self.mm_last != mm_now:#現在時刻の分が5で割れるかつ前の処理時刻でないか確認
             print("5分に一回の処理です。")
             self.mm_last = mm_now
-            #ユーザアクティビティログの要求　　　　　　　　　　　　　　　　　　　　　　　　 Permisson
+            #ユーザアクティビティログの要求（時刻とログの許可がある場合）
             allow_time_access = self.setting.get_setting_value("ApplicationSettings.Permission.CurrentTime")
             allow_logging_access = self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog")
             if allow_time_access == True and allow_logging_access == True:
@@ -215,6 +223,13 @@ class myapp():
         
         #繰り返し処理
         self.update_id = self.ui.after(10*1000, self.update, debug)
+
+    #入力の際の場合分け
+    def Check_responseMode(self,input_dict,  debug=-1):
+        if self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog"):
+            self.bus.publish("Response_RAGisON")
+        else:
+            self.bus.publish("Response_RAGisOFF")
 
     #入力テキストをAIに伝える
     def SendMessage_toAI(self, text, debug = -1):
@@ -260,15 +275,7 @@ def _setup_logging_info():
         WARNING: すぐには問題ないが、注意が必要なこと（「設定ファイルの一部が古い」など）
         ERROR: 処理が続行できないような重大なエラー
     """
-    #パス取得
-    """
-    実行中のスクリプトが存在するディレクトリの絶対パスを取得する。
-    PyInstallerなどでコンパイルされた場合にも対応できる書き方。
-    """
-    if getattr(sys, 'frozen', False):
-        basedir = os.path.dirname(sys.executable)
-    else:
-        basedir = os.path.dirname(os.path.abspath(__file__))
+    
     #ログの基本設定
     log_filepath = os.path.join(basedir, 'application.log')# ログファイルのフルパスを安全に作成
     # 1. ルートロガーを取得

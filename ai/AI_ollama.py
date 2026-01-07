@@ -4,6 +4,8 @@ import base64
 from io import BytesIO
 from PIL import Image
 import threading
+import logging
+logger = logging.getLogger(__name__)
 
 # プログラムのインポート
 
@@ -118,6 +120,7 @@ class ollamaAI():
 
         except requests.exceptions.RequestException as e:
             print(f"エラーが発生しました: {e}")
+            logger.error(f"AI_ollama.py ollamaAI.response() error: {e}")
             response_text = "エラーにより応答できませんでした。"
         except json.JSONDecodeError:
             print("Ollamaサーバーからの応答が不正なJSON形式です。")
