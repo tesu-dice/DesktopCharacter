@@ -78,7 +78,7 @@ class geminiAI():
         def get_models(self, debug = -1):
             #モデルの種類確認
             names = []
-            if self.usersetting.get_setting_value("ApplicationSettings.geminiAPIkey") == "":
+            if self.usersetting.get_setting_value("LLMSettings.geminiAPI.key") == "":
                 return "APIキーが設定されていません。"
             for m in genai.list_models():
                 if "generateContent" in m.supported_generation_methods:

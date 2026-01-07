@@ -12,12 +12,26 @@ import time
 #プログラム
 from services import WindowsInfoCollecter
 from services.config_controller import UserSettings, read_configfile
+from services import UserDataLogger
 
 from services import Event_Bus
 from ui import UI_main
 from ai import AI_main
 from services.release_check import check_nowver_is_newestver
+from services.WindowsInfoCollecter import get_datetime
 from ui.TTS_VoiceVoxEngine import start_server
+
+
+
+#パス取得
+"""
+実行中のスクリプトが存在するディレクトリの絶対パスを取得する。
+PyInstallerなどでコンパイルされた場合にも対応できる書き方。
+"""
+if getattr(sys, 'frozen', False):
+    basedir = os.path.dirname(sys.executable)
+else:
+    basedir = os.path.dirname(os.path.abspath(__file__))
 
 
 
@@ -48,6 +62,7 @@ class myapp():
         self.bus = Event_Bus.EventBus()
             #各種サービス要素
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.bus, self.setting, debug=debug)
+        self.UserDataLoger = UserDataLogger.UserActivityManager(self.bus, dir = basedir)
         self.AI_Manager = AI_main.AI_Manager(self.bus, self.setting, TalkHistory, debug=debug)
         self.ui = UI_main.UI(self.bus, self.setting, debug=debug)
         #イベントバスへの購読設定
@@ -58,7 +73,8 @@ class myapp():
         
         #アプリケーション動作開始
         self.bus.publish("application start")
-        self.update(debug=debug)
+        self.mm_last = None # 同じ時刻で何度も処理しないためのint分
+        self.update_id = self.ui.after(10*1000, self.update, debug)
         
     #EventBusにおける購読処理の初期化
     def _setup_event_listeners(self):
@@ -71,19 +87,32 @@ class myapp():
 
 
 
-        #ユーザからTalkWindowでメッセージが送信されたとき(UserMessage)
-        self.bus.subscribe("MessageInput", self.ui.talk_window.add_log)
-        self.bus.subscribe("MessageInput", self.AI_Manager.response)
-        self.bus.subscribe("AIGenerateMessage", self.ui.talk_window.add_log)
-        self.bus.subscribe("AIGenerateMessage", self.ui.Reflecting_TextResponses) # UI側でスレッドセーフ化
+        #会話用の入力からの流れ(RAG機能OFFなら途中飛ばす。)
+        self.bus.subscribe("MessageInput", self.ui.talk_window.add_log)#入力文字のUI表示
+        self.bus.subscribe("MessageInput", self.Check_responseMode)#RAGのON/OFFの確認
+        self.bus.subscribe_when(["MessageInput","Response_RAGisOFF"], self.AI_Manager.response)#RAGがOFFの際のテキスト生成
+        self.bus.subscribe_when(["MessageInput","Response_RAGisON"], self.AI_Manager.make_rag_request)#RAG参照用のリクエスト生成
+        self.bus.subscribe("Req_RAGInfo", self.UserDataLoger.handle_rag_request)#RAG情報の参照可能か確認してデータの準備や完了通知の指示
+        self.bus.subscribe_when(["MessageInput","RAGisReady"], self.AI_Manager.response_withRAG)#RAGがONの際のテキスト生成
+        self.bus.subscribe("AIGenerateMessage", self.ui.talk_window.add_log)#会話テキストの生成を受けてUIに表示、RAGのON/OFFに関わらずここで合流。
+        self.bus.subscribe("AIGenerateMessage", self.ui.Reflect_Text) #TTSと立ち絵へ反映
+
         
+        #ユーザデータの記録
+            #5分毎のユーザアクティビティの記録
+        self.bus.subscribe_workflow("Req_UserActivityLog", handler=self.WinInfo.get_activate_window, response_event="Req_UserActivityLog_win")
+        self.bus.subscribe_workflow("Req_UserActivityLog", handler=self.WinInfo.get_plaing_media, response_event="Req_UserActivityLog_media")
+        self.bus.subscribe_workflow("Req_UserActivityLog", handler=self.WinInfo.get_datetime, response_event="Req_UserActivityLog_time")
+        self.bus.subscribe_when(["Req_UserActivityLog_time","Req_UserActivityLog_win", "Req_UserActivityLog_media"], self.UserDataLoger.add_userlog)
+            #一時間毎, 一日毎の要約作成
+        self.bus.subscribe_workflow("Req_UserSummaryLog_context", handler=self.AI_Manager.response_onetime, response_event="Req_UserSummaryLog_response")
+        self.bus.subscribe_when(["Req_UserSummaryLog_TimeAndScope", "Req_UserSummaryLog_response"], self.UserDataLoger.add_summary_log)
+
         #アプリケーションの終了
         self.bus.subscribe("Req_ExitApp", self.exit)
 
         #設定の更新
         self.bus.subscribe("SettingsUpdated", self.on_settings_updated)
-
-
 
     #アプリケーション起動時の送信メッセージ
     def app_start_message(self, serverid, debug = -1):
@@ -114,7 +143,7 @@ class myapp():
             _result = self.AI_Manager.test_connection(debug=debug)
             _start_info_texts += f"{('成功' if _result[0] else '失敗')}\n\n"
             if _result[0] == False:
-                _start_info_error += f"GeminiAPIの接続に失敗しました。:\n{_result[1]}\n\n"
+                _start_info_error += f"自然言語AIサービスとの接続に失敗しました。:\n{_result[1]}\n\n"
 
         #VoiceVoxサーバの起動
         if serverid == None:
@@ -136,13 +165,13 @@ class myapp():
         #エラーメッセージ
         if _start_info_error != "":
             self.bus.publish("Req_PopUpMessage", "info", "エラーメッセージ", _start_info_error)
-
+    
+    #設定を更新した場合の処理
     def on_settings_updated(self, new_settings: UserSettings):
         """設定が更新されたときに呼び出され、アプリケーション全体の設定を更新します。"""
         logging.info("アプリケーション全体の設定を更新します...")
         self.setting = new_settings
         logging.info("アプリケーション全体の設定更新が完了しました。")
-
 
     #アプリケーションの終了、再起動
     def exit(self, _reboot = False, debug = -1):
@@ -165,30 +194,52 @@ class myapp():
                 python = sys.executable
                 os.execl(python, python, *sys.argv)
         
-            
-    
     #状態監視の実行
     def update(self, debug = -1):
-        print(self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.Time"))
+        print("update called.  ",self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.Time"),"秒毎に会話します。")
+        #デバック処理
         if debug >= 0:
             indent = "  " * debug
             print(f"{indent}main.py update() called. activespeak={self.setting.get_setting_value('ApplicationSettings.ActiveSpeak.on/off')}")
             debug = debug + 1 if debug >= 0 else -1
-        
+        #経過時間毎の処理
         if self.setting.get_setting_value("ApplicationSettings.ActiveSpeak.on/off") == True:    
             if self.WinInfo.check_freetime():
                 self.SendMessage_toAI("SYSTEM：ユーザー作業中...", debug=debug)
-        self.update_id = self.ui.after(10000, self.update, debug)
+        #時間依存の処理
+        time = self.WinInfo.get_datetime()
+        mm_now = int(time.split(":")[1])
+        if mm_now % 5 == 0 and self.mm_last != mm_now:#現在時刻の分が5で割れるかつ前の処理時刻でないか確認
+            print("5分に一回の処理です。")
+            self.mm_last = mm_now
+            #ユーザアクティビティログの要求（時刻とログの許可がある場合）
+            allow_time_access = self.setting.get_setting_value("ApplicationSettings.Permission.CurrentTime")
+            allow_logging_access = self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog")
+            if allow_time_access == True and allow_logging_access == True:
+                self.bus.publish("Req_UserActivityLog")
+                
+        #テスト用
+
+        
+        #繰り返し処理
+        self.update_id = self.ui.after(10*1000, self.update, debug)
+
+    #入力の際の場合分け
+    def Check_responseMode(self,input_dict,  debug=-1):
+        if self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog"):
+            self.bus.publish("Response_RAGisON")
+        else:
+            self.bus.publish("Response_RAGisOFF")
 
     #入力テキストをAIに伝える
     def SendMessage_toAI(self, text, debug = -1):
         #会話送信テキストの準備と送信
         t, w, m = "", "", ""
-        if self.setting.get_setting_value("ApplicationSettings.Permisson.CurrentTime") == True:
+        if self.setting.get_setting_value("ApplicationSettings.Permission.CurrentTime") == True:
             t = "\n現在時刻：" + self.WinInfo.get_datetime()
-        if self.setting.get_setting_value("ApplicationSettings.Permisson.ActiveWindow") == True:
+        if self.setting.get_setting_value("ApplicationSettings.Permission.ActiveWindow") == True:
             w = "\nアクティブなウィンドウ：" + self.WinInfo.get_activate_window()
-        if self.setting.get_setting_value("ApplicationSettings.Permisson.PlayingMedia") == True:
+        if self.setting.get_setting_value("ApplicationSettings.Permission.PlayingMedia") == True:
             m = "\n再生中のメディア：" + self.WinInfo.get_plaing_media(debug = debug + 1 if debug >= 0 else -1) 
         send_text = text + t + w + m
         self.bus.publish("MessageInput", {"role": "user", "parts":[send_text]}, debug=debug)
@@ -224,27 +275,27 @@ def _setup_logging_info():
         WARNING: すぐには問題ないが、注意が必要なこと（「設定ファイルの一部が古い」など）
         ERROR: 処理が続行できないような重大なエラー
     """
-    #パス取得
-    """
-    実行中のスクリプトが存在するディレクトリの絶対パスを取得する。
-    PyInstallerなどでコンパイルされた場合にも対応できる書き方。
-    """
-    if getattr(sys, 'frozen', False):
-        # 実行ファイル (.exe) のパスを取得
-        basedir = os.path.dirname(sys.executable)
-    else:
-        # Pythonスクリプトのパスを取得
-        basedir = os.path.dirname(os.path.abspath(__file__))
-    #print("logファイルの保存先ディレクトリ=", basedir)
-    #ログの基本設定
-    logging.basicConfig(
-        level=logging.INFO,  # DEBUGレベル以上のログをすべて記録する
-        format='%(asctime)s - %(levelname)s - [%(name)s] %(message)s',
-        filename=basedir + 'application.log', # ログをこのファイルに出力する
-        encoding='utf-8',
-        filemode='w' # 起動時にファイルを上書き（'a'にすると追記）
-    )
     
+    #ログの基本設定
+    log_filepath = os.path.join(basedir, 'application.log')# ログファイルのフルパスを安全に作成
+    # 1. ルートロガーを取得
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)  # アプリケーション全体の基本レベル
+
+    # 2. 既存のハンドラを一度すべてクリアする（ライブラリによる設定をリセット）
+    if root_logger.hasHandlers():
+        root_logger.handlers.clear()
+    # 3. ファイル出力用のハンドラを新規作成
+    # mode='w' で、起動時にファイルを上書き（新規作成）します
+    file_handler = logging.FileHandler(log_filepath, mode='w', encoding='utf-8')
+    # 4. ログの書式（フォーマット）を定義
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - [%(name)s] %(message)s')
+    # 5. ハンドラに書式をセット
+    file_handler.setFormatter(formatter)
+
+    # 6. ルートロガーに、設定済みのハンドラを追加
+    root_logger.addHandler(file_handler)
+
     #自分のモジュールは個別で設定する。
     logging.getLogger('ai').setLevel(logging.DEBUG)
     logging.getLogger("collectors").setLevel(logging.DEBUG)

@@ -85,7 +85,7 @@ class AI_Manager():
                             "笑顔.tiff：今日もいい天気ですね。\n" \
                             "期待.png：今日も一日頑張りましょう。\n"\
                             "# 立ち絵ファイル名\n"
-            
+        #立ち絵ファイル名を追記
         base_prompt += self.load_imgs(dir_name=self.setting.get_setting_value("ApplicationSettings.CharacterImage.Folder"))+"\n#キャラクター設定\n"
         f= open("Character_setting.txt", encoding="utf-8")
         Character_set_text=""
@@ -93,14 +93,19 @@ class AI_Manager():
             line.strip("\n")
             Character_set_text +=line
         f.close()
-        self.init_prompt= [{"role": "user", "parts":[base_prompt + Character_set_text]},({"role": "model", "parts":["了解しました。"]})]
+        self.init_prompt= [{"role": "user", "parts":[base_prompt + Character_set_text]},{"role": "model", "parts":["了解しました。"]}]
 
 
     def add_talkhistory(self, input_dict:dict, debug = -1):
         #会話履歴のリストに会話の辞書を追加する
         # dict{"role", "parts", "img", "token_count"}
-
-        self.history.append(input_dict)
+        
+        # APIに渡す会話履歴には "role" と "parts" のみ含める
+        history_entry = {
+            "role": input_dict["role"],
+            "parts": input_dict["parts"]
+        }
+        self.history.append(history_entry)
         
         #会話が長くなりすぎたら削除
         max_history_length = 100
@@ -130,7 +135,7 @@ class AI_Manager():
     def response(self, input_dict : dict, debug: int = -1):
         #AIの指定がなかった場合
         if self.AI_client is None:
-            output_dict = {"role": "model", "parts":["AIサービスが選択されていません。"], "token_count": 0}
+            output_dict = {"role": "model", "parts":["AIサービスが選択されていません。"],  "token_count": 0}
             #イベント発行
             self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
             return
@@ -143,12 +148,87 @@ class AI_Manager():
             past_contents = self.history
         #返答の生成
         input_contents = self.init_prompt + past_contents
+
         response = self.AI_client.response(input_contents=input_contents, debug = debug)
         output_dict = {"role": "model", "parts":[response["text"]], "token_count": response["token_count"]}
         self.add_talkhistory(output_dict, debug)
         #イベント発行
         self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
+
+    #RAG情報アリでの応答関数(基本はresponseのコピー)
+    def response_withRAG(self, input_dict : dict, rag_info:str, debug: int = -1,):
+        #AIの指定がなかった場合
+        if self.AI_client is None:
+            output_dict = {"role": "model", "parts":["AIサービスが選択されていません。"], "token_count": 0}
+            #イベント発行
+            self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
+            return
         
+        #送信する会話履歴の処理
+        self.add_talkhistory(input_dict, debug)
+        if len(self.history) > self.active_history_num:
+            past_contents = self.history[-self.active_history_num:]
+        else:
+            past_contents = self.history
+        #返答の生成
+        rag_contents = [{"role": "model", "parts":[f"# 応答の参考情報\n{rag_info}"]}]
+        input_contents = self.init_prompt + rag_contents + past_contents 
+
+        response = self.AI_client.response(input_contents=input_contents, debug = debug)
+        output_dict = {"role": "model", "parts":[response["text"]], "token_count": response["token_count"]}
+        self.add_talkhistory(output_dict, debug)
+        #イベント発行
+        self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
+
+    
+    #入力された一文の会話辞書からRAGを使う際のデータを選択する。将来的にはリクエストを複数strのlist形式で生成するかも？
+    def make_rag_request(self, input_dict : dict, debug: int = -1):
+        #AIの指定がなかった場合
+        if self.AI_client is None:
+            output_dict = {"role": "model", "parts":["AIサービスが選択されていません。"]}
+            #イベント発行
+            self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
+            m = "error", "AIサービス", "AI(LLM)サービスが選択されていません。\nもしくはAIサービスへの接続に失敗しました。"
+            self.bus.publish("Req_PopUpMessage", m)
+            return
+        #ユーザアクティビティのログおよび活用機能
+        if self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog"):
+            _input = input_dict["parts"]
+            _text =     f"あなたはアシスタントAIです。以下の例に従って出力を行い、ユーザの入力を確認して必要なユーザの活動記録について示してください。\
+                        記録は日と時刻に依存して作成されています。もしも必要がない場合は「None」と返してください。\n\
+                        # 応答の例：\n\
+                        2025年11月10日の要約が欲しいとき->2025-11-10\n\
+                        2025年11月10日18時の要約が欲しいとき->2025-11-10 18\n\
+                        # ユーザの入力\n\
+                        {_input}"
+            _requesttext = str(self.response_onetime(_text))
+            self.bus.publish("Req_RAGInfo", _requesttext)
+        else:
+            logger.warning("RAG機能がONでないのに会話時にRAGの利用が要求されました。")
+    
+
+    #入力文字列に対して文字列形式で返す。一問一答用
+    def response_onetime(self, text, debug = -1):
+        """
+        LLMに入力された文字列を一度だけ応答してもらう。返すのも単純な文字列。
+        """
+        if self.AI_client is None:
+            output_dict = {"role": "model", "parts":["AIサービスが選択されていません。"]}
+            #イベント発行
+            self.bus.publish("AI.response_onetime end", output_dict, debug=debug)
+            return
+        if text == "":
+            return ""
+        
+
+        #返答の生成
+        input = [{"role": "user", "parts":[text]}]
+        
+        response = self.AI_client.response(input_contents=input, debug = debug)
+        output_dict = {"role": "model", "parts":response["text"], "token_count": response["token_count"]}
+        #self.bus.publish("AI.response_onetime end", output_dict, debug=debug)
+        return str(output_dict["parts"])
+
 
 
 

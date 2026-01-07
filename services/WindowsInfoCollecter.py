@@ -39,18 +39,33 @@ class win_info_collector():
             
     #作業中のウィンドウのID取得してそのタイトルを文字列で返す。
     def get_activate_window(self):
+        if self.usersetting.get_setting_value("ApplicationSettings.Permission.ActiveWindow") == False:
+            return "アクティブウィンドウの取得権限がありません。"
         window_title = win32gui.GetWindowText(win32gui.GetForegroundWindow())
-        return window_title
+        window_title = window_title.replace(" — ", " - ")
+        infos = window_title.split(" - ") #ファイル名-フォルダ名-アプリ名or ウィンドウタイトル-サイト名-アプリ名になってるポイ
+        #print("分割数=", len(infos), infos)
+        if len(infos) ==2:#ソフト名とウィンドウタイトルだけ
+            result = f"{infos[1]}: {infos[0]}"
+        elif len(infos) > 2 :#ソフト名とウィンドウ体位取る以外もある場合
+            remaining_parts = " - ".join(infos[:-2])
+            result = f"{infos[-1]}: {infos[-2]}[{remaining_parts}]"
+        else:
+            result = window_title
+        return result
     
     #再生中のメディアを取得
     def get_plaing_media(self, debug=-1):
+        if self.usersetting.get_setting_value("ApplicationSettings.Permission.PlayingMedia") == False:
+            return "再生メディアの取得権限がありません。"
         #実際に動作するのは_get_media_info(). 非同期的に動作するので分割。self側で履歴管理とかするならここで。
+        #print("get_plaing_media()", debug)
         return asyncio.run(_get_media_info(debug=debug))
 
-    
-        
     # YYYY-MM-DD hh:mm 形式の現在時刻を文字列で返す。
     def get_datetime(self):
+        if self.usersetting.get_setting_value("ApplicationSettings.Permission.PlayingMedia") == False:
+            return "現在時刻へのアクセス権がありません。"
         now = datetime.datetime.now()
         return now.strftime(f"%Y-%m-%d %H:%M")
 
@@ -134,7 +149,9 @@ async def _get_media_info(debug = -1) -> str:
     else:
         return "再生中のメディアなし"
         
-
+def get_datetime():
+        now = datetime.datetime.now()
+        return now.strftime(f"%Y-%m-%d %H:%M")
 
 
 if __name__ == "__main__":

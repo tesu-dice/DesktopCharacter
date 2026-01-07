@@ -105,7 +105,7 @@ class myapp():
     def _on_user_message_sent(self, text: str):
         """UIからメッセージ送信イベントを受け取ったときの処理"""
         t, w, m = "", "", ""
-        if self.config.get_setting_value("ApplicationSettings.Permisson.CurrentTime"):
+        if self.config.get_setting_value("ApplicationSettings.Permission.CurrentTime"):
             t = "\n現在時刻：" + self.win_info.get_datetime()
         # ... (他のコンテキスト付与処理)
         send_text = text + t + w + m

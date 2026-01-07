@@ -157,8 +157,8 @@ class UI(tk.Tk):
         self.geometry(f"{monitors_data[0]}x{monitors_data[1]}+{monitors_data[2]}+{monitors_data[3]}")
         self.deiconify()
     
-    def Reflecting_TextResponses(self, talk_dict:dict, debug=-1):
-        """テキスト応答をUIに反映し、設定に基づいて読み上げます。"""
+    def Reflect_Text(self, talk_dict:dict, debug=-1):
+        """テキスト応答を設定に基づいて読み上げます。"""
         if self.TTS is None:
             logger.warning("TTSクライアントが初期化されていないため、読み上げをスキップします。")
             return
@@ -222,6 +222,7 @@ class UI(tk.Tk):
 
     @staticmethod
     def show_message_box(type, title:str, message:str)->bool:
+        #title でクラスやサービス名、messageで内容をユーザに通知
         if type == "info":
             return messagebox.showinfo(title, message)
         elif type == "warning":

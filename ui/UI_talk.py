@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 # プログラム同士のインポート
 from services.config_controller import UserSettings
 from services.Event_Bus import EventBus
+from services.WindowsInfoCollecter import get_datetime
 
 
 class TalkWindow(tk.Toplevel):
@@ -74,6 +75,9 @@ class TalkWindow(tk.Toplevel):
         """
 
         message = self.input_text.get()
+        if self.setting.get_setting_value("ApplicationSettings.Permission.CurrentTime") == True:
+            t = "\n現在時刻：" + get_datetime()
+            message += t
         _new_talkhistory = {"role": "user", "parts":[message]}
         if message:
             # EventBusで送信ボタンが押されたことを報告
