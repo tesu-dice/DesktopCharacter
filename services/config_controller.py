@@ -83,8 +83,8 @@ class UserSettings:
             if "max" in node:
                 value_range_data["max"] = node["max"]
 
-            # description は name を使用
-            description = name
+            # description は node の "description" を優先し、なければ name を使用
+            description = node.get("description", name)
 
             # item_type のデフォルト値を設定
             if item_type is None:
@@ -291,11 +291,15 @@ def get_default_data() -> Dict[str, Any]:
             "children": {
                 "FontSize": {
                     "name": "フォントサイズ",
+                    "description": "このアプリでのフォントサイズ",
                     "type": "int",
+                    "min": 10,
+                    "max": 50,
                     "value": 15
                 },
                 "ShowMetadatas":{
-                    "name":"会話のメタデータを表示(調整中)",
+                    "name":"会話のメタデータを表示",
+                    "description":"会話の際に利用したトークン数を表示します。",
                     "type":"bool",
                     "value":False
                 },
@@ -305,6 +309,7 @@ def get_default_data() -> Dict[str, Any]:
                     "children":{
                         "Folder": {
                             "name": "参照する立ち絵フォルダ",
+                            "description": "キャラクター画像のフォルダを指定してください。",
                             "type": "choice_with_func",
                             "value": "CHARAT-MONO"
                         },
@@ -320,6 +325,7 @@ def get_default_data() -> Dict[str, Any]:
                         },
                         "AlwaysOnTop": {
                             "name": "キャラ画像を常に最前面表示",
+                            "description": "キャラ画像を常にほかウィンドウより前、最前面に表示します。",
                             "type": "bool",
                             "value": True
                         }
@@ -327,6 +333,7 @@ def get_default_data() -> Dict[str, Any]:
                 },
                 "ActiveSpeak": {
                     "name": "自発的な会話",
+                    "description": "定期的にアプリ側から自動で話しかけます。",
                     "type": "section",
                     "children": {
                         "on/off": {
@@ -352,16 +359,19 @@ def get_default_data() -> Dict[str, Any]:
                         },
                         "ActiveWindow": {
                             "name": "作業中のウィンドウ",
+                            "description": "アクティブなウィンドウのソフト名、ウィンドウ名を取得・利用します",
                             "type": "bool",
                             "value": True
                         },
                         "PlayingMedia": {
                             "name": "再生中のメディア",
+                            "description": "再生中のメディアのタイトルを取得・利用します。",
                             "type": "bool",
                             "value": True
                         },
                         "UserActivityLog": {
                             "name": "ユーザーアクティビティログの記録とその閲覧",
+                            "description": "許可された項目をアプリ内で記録・要約・保存して、必要に応じて利用します。\n個人情報を多大に含み、AIサービスの使用量が大きくなるためOllamaでの動作を推奨します。",
                             "type": "bool",
                             "value": True
                         }
@@ -374,7 +384,7 @@ def get_default_data() -> Dict[str, Any]:
             "type": "section",
             "children":{
                 "Service": {
-                    "name": "LLMサービスの選択",
+                    "name": "AIサービスの選択",
                     "type": "choice",
                     "value": "未選択",
                     "options": [
@@ -384,27 +394,34 @@ def get_default_data() -> Dict[str, Any]:
                 },
                 "ActiveHistory":{
                     "name":"会話で使う履歴の数",
+                    "description":"会話の際に覚えておく会話履歴の長さです。",
                     "type":"int",
+                    "min": 1,
+                    "max": 50,
                     "value": 10
                 },
                 "geminiAPI": {
-                    "name": "GeminiAPI",
+                    "name": "Gemini",
+                    "description": "Googleの提供しているAIサービスです。無料枠での利用では送信内容が学習に利用されます。",
                     "type": "section",
                     "children":{
                         "key": {
                             "name": "APIキー",
+                            "description": "Google AI Studioで取得したAPIキーを入力してください。",
                             "type": "str",
                             "value": ""
                         },
                         "model":{
                             "name": "モデル",
+                            "description": "会話で利用するモデルを選択してください。Textモデル以外も表示されています。\n2026年1月時点ではgemini-2.5-flash-lite推奨です。\n",
                             "type": "choice_with_func",
                             "value": "未選択"
                         }
                     }
                 },
                 "Ollama": {
-                    "name": "OllamaAPI",
+                    "name": "Ollama",
+                    "description": "中級車向け。\nローカルでのAI動作用サービスです。",
                     "type": "section",
                     "children":{
                         "URL": {

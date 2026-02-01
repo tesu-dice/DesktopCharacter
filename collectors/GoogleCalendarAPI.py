@@ -132,7 +132,7 @@ class GoogleScheduleControl:
                         except ValueError: pass
                     f.write(f"| [{checked}] | {title} | {due_time} | {notes} |\n")
                 f.write("\n")
-            f.write("## 予定\n")
+            f.write("## タイムライン\n")
             if not events: f.write("（予定はありません）\n\n")
             else:
                 f.write("| 時刻 | 項目名 | 備考 |\n| ---- | ------ | ---- |\n")
@@ -151,8 +151,8 @@ class GoogleScheduleControl:
 def main():
     try:
         gcal = GoogleScheduleControl()
-        start_date = datetime.date(2025, 6, 1)
-        end_date = datetime.date(2025, 9, 6)
+        start_date = datetime.date(2025, 9, 1)
+        end_date = datetime.date(2026, 1, 10)
 
         current_date = start_date
         while current_date <= end_date:

@@ -9,6 +9,8 @@
 import tkinter as tk
 import tkinter.filedialog
 from tkinter import ttk  # スタイル付きウィジェットのため
+import logging
+logger = logging.getLogger(__name__)
 
 # プログラム同士のインポート（これらは外部ファイルとして存在し、設定UIから利用される）
 from services import config_controller # 設定ファイルの読み書きや、設定値の管理を行うモジュール
@@ -18,6 +20,50 @@ from ai import AI_ollama
 from ui import TTS_VoiceVoxEngine # VoiceVoxエンジンのスピーカーリストなどを取得するために使用
 from ui import TTS_WindowsNarratorManager # Windowsナレーターの音声モデルなどを取得するために使用
 from main import get_CharacterFolders # mainモジュールからget_CharacterFoldersをインポート
+
+class Tooltip:
+    """
+    ウィジェットにツールチップ機能を提供します。
+    マウスがウィジェット上にあるときに、説明テキストの小さなポップアップウィンドウを表示します。
+    """
+    def __init__(self, widget, text, settings: config_controller.UserSettings):
+        self.widget = widget
+        self.text = text
+        self.settings = settings
+        self.tooltip_window = None
+        self.widget.bind("<Enter>", self.show_tooltip)
+        self.widget.bind("<Leave>", self.hide_tooltip)
+
+    def show_tooltip(self, event=None):
+        """ツールチップウィンドウを表示します。"""
+        if self.tooltip_window or not self.text:
+            return
+        
+        # ウィジェットの座標を取得し、カーソルの近くにツールチップを表示
+        x, y, _, _ = self.widget.bbox("insert")
+        fontsize = self.settings.get_setting_value("ApplicationSettings.FontSize", default=10)
+        x += self.widget.winfo_rootx() + int(fontsize*2.5)
+        y += self.widget.winfo_rooty() + int(fontsize*2.5)
+
+        self.tooltip_window = tw = tk.Toplevel(self.widget)
+        tw.wm_overrideredirect(True)  # ウィンドウのタイトルバーなどを非表示に
+        tw.wm_geometry(f"+{x}+{y}")
+
+        # アプリケーション設定からフォントサイズを取得
+        app_font_size = self.settings.get_setting_value("ApplicationSettings.FontSize", default=10)
+        # ツールチップのフォントサイズを本文より少し小さく設定（最低8pt）
+        tooltip_font_size = max(app_font_size - 2, 8)
+
+        label = tk.Label(tw, text=self.text, justify='left',
+                         background="#ffffe0", relief='solid', borderwidth=1,
+                         font=("Yu Gothic UI", tooltip_font_size, "normal"))
+        label.pack(ipadx=1)
+
+    def hide_tooltip(self, event=None):
+        """ツールチップウィンドウを非表示にします。"""
+        if self.tooltip_window:
+            self.tooltip_window.destroy()
+        self.tooltip_window = None
 
 # 設定オプションのUIを管理するクラス
 class UI(tk.Toplevel):
@@ -69,6 +115,7 @@ class UI(tk.Toplevel):
         # イベントバインディング: スクロール可能なフレームとCanvasのサイズ変更を検知し、スクロール領域を調整
         self.scrollable_frame.bind("<Configure>", self._on_frame_configure)
         self.canvas.bind("<Configure>", self._on_canvas_configure)
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
 
         # --- 設定UIの再帰的な生成を開始 ---
         self.create_setting_ui_recursive()
@@ -95,6 +142,20 @@ class UI(tk.Toplevel):
         """
         self.canvas.itemconfig(self.canvas_window, width=event.width)
 
+    def _on_mousewheel(self, event):
+        """マウスホイールでCanvasをスクロールさせる"""
+        # Windows/macOS では event.delta を使用
+        # Linux では Button-4/5 を使用しますが、多くの環境に対応させる記述
+        if event.num == 4: # Linux: Scroll Up
+            self.canvas.yview_scroll(-1, "units")
+        elif event.num == 5: # Linux: Scroll Down
+            self.canvas.yview_scroll(1, "units")
+        else: # Windows / macOS
+            # event.delta は通常 120 の倍数で返ってくるため、
+            # -1 * (delta / 120) でスクロール方向と量を調整
+            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+
     def create_setting_ui_recursive(self):
         """
         設定UIの再帰的な構築を開始する初期メソッドです。
@@ -116,7 +177,12 @@ class UI(tk.Toplevel):
         """
         
         # 設定項目の説明またはキーをラベルとして表示
-        ttk.Label(parent_widget_frame, text=f"{display_key}:").grid(row=0, column=0, sticky="w", padx=5)
+        label = ttk.Label(parent_widget_frame, text=f"{display_key}:")
+        label.grid(row=0, column=0, sticky="w", padx=5)
+
+        # description があり、それが name と異なる場合のみツールチップを適用
+        if item_obj.description and item_obj.description != item_obj.name:
+            Tooltip(label, item_obj.description, self.settings)
 
         initial_value = item_obj.value
 
@@ -138,6 +204,7 @@ class UI(tk.Toplevel):
                 item_obj.options = TTS_WindowsNarratorManager.get_SAPIVoice_names()
             combobox = ttk.Combobox(parent_widget_frame, textvariable=var, values=item_obj.options, state="readonly")
             combobox.grid(row=0, column=1, sticky="ew", padx=5)
+            combobox.bind("<MouseWheel>", lambda e: "break")
             self._widget_vars[full_path] = var # 変数を保存
 
         # 関数で更新可能なコンボボックス
@@ -161,7 +228,7 @@ class UI(tk.Toplevel):
                 state="readonly"
             )
             combobox.grid(row=0, column=1, sticky="ew", padx=(5, 0)) # ボタンの右に配置
-
+            combobox.bind("<MouseWheel>", lambda e: "break")
             # ボタンのコマンド関数
             def update_options():
                 try:
@@ -220,8 +287,8 @@ class UI(tk.Toplevel):
                         raise TypeError(f"Function for '{full_path}' did not return a list or tuple.")
                 
                 except Exception as e:
-                    error_msg = "未設定"
-                    print(f"Error updating options for '{full_path}': {e}")
+                    error_msg = "設定UIの参照エラー"
+                    logger.error(f"Error updating options for '{full_path}': {e}")
                     combobox['values'] = [error_msg]
                     var.set(error_msg)
 
@@ -296,8 +363,8 @@ class UI(tk.Toplevel):
             
         # 未対応のタイプが検出された場合
         else:
-            print("対応のタイプが検出されました。", item_obj.item_type, full_path)
-            ttk.Label(parent_widget_frame, text=f"Unsupported type: {item_obj.item_type}").grid(row=0, column=1, sticky="w", padx=5)
+            logger.error(f"未対応のタイプが検出されました。{item_obj.item_type} {full_path}")
+            ttk.Label(parent_widget_frame, text=f"ERROR Unsupported type: {item_obj.item_type}").grid(row=0, column=1, sticky="w", padx=5)
 
     def add_settings_to_frame(self, parent_frame, config_node_dict, current_path_parts):
         """
@@ -315,7 +382,12 @@ class UI(tk.Toplevel):
 
             # Case 1: このノードがセクションである場合 ('type: "section"' と 'children' を持つ)
             if isinstance(value_node, dict) and value_node.get("type") == "section" and "children" in value_node and isinstance(value_node["children"], dict):
-                group_frame = ttk.LabelFrame(parent_frame, text=display_name, padding=(5,5))
+                # フレームタイトルの作成
+                header_label = ttk.Label(parent_frame, text=display_name)
+                if "description" in value_node and value_node["description"]:
+                    Tooltip(header_label, value_node["description"], self.settings)
+                # フレーム
+                group_frame = ttk.LabelFrame(parent_frame, labelwidget=header_label, padding=(5,5))
                 group_frame.grid(row=row_num_in_parent, column=0, sticky="ew", padx=5, pady=5)
                 group_frame.columnconfigure(0, weight=1) # グループフレーム内の最初の列に重みを設定
                 self.add_settings_to_frame(group_frame, value_node["children"], new_path_parts)
@@ -326,13 +398,13 @@ class UI(tk.Toplevel):
                 item = self.settings.get_setting_item(full_path)
                 if item: # SettingItemオブジェクトが取得できた場合
                     simple_item_frame = ttk.Frame(parent_frame)
-                    simple_item_frame.grid(row=row_num_in_parent, column=0, sticky="ew", padx=5, pady=2)
+                    simple_item_frame.grid(row=row_num_in_parent, column=0, sticky="ew", padx=5, pady=5)
                     simple_item_frame.columnconfigure(1, weight=1)
                     # UI生成時には、UserSettingsのオブジェクトを使用してウィジェットを構築
                     self._create_widget_for_item(simple_item_frame, item, full_path, display_name)
                     row_num_in_parent += 1
                 else:
-                    print(f"警告: パス '{full_path}' は 'value' を持ちますが、SettingItemとして登録されていません。")
+                    logger.error(f"警告: SettingItemが見つかりませんでした。設定のパスが間違っている可能性があります。{full_path}")
                     if any(isinstance(v, dict) for v in value_node.values()):
                         implicit_group_frame = ttk.LabelFrame(parent_frame, text=display_name, padding=(5,5))
                         implicit_group_frame.grid(row=row_num_in_parent, column=0, sticky="ew", padx=5, pady=5)
@@ -359,11 +431,11 @@ class UI(tk.Toplevel):
         最終的にファイルに保存します。
         その後、設定更新を通知し、ウィンドウを閉じます。
         """
-        print("「設定を反映」ボタンが押されました。すべてのUI値を読み取り、設定に適用します。")
+        logger.debug("設定を反映ボタンが押されました。すべてのUI値を読み取り、設定に適用します。")
         for path, var_obj in self._widget_vars.items():
             item = self.settings.get_setting_item(path)
             if not item:
-                print(f"警告: パス '{path}' の SettingItem が見つかりませんでした。スキップします。")
+                logger.warning(f"警告: パス '{path}' の SettingItem が見つかりませんでした。スキップします。")
                 continue
             new_value = var_obj.get()
 
@@ -376,12 +448,12 @@ class UI(tk.Toplevel):
                     max_val = item.value_range.get("max")
                     if min_val is not None and new_value < min_val:
                         new_value = min_val
-                        print(f"警告: '{path}' の値 {new_value} は最小値 {min_val} 未満のため、{min_val} に調整しました。")
+                        logger.warning(f"警告: '{path}' の値 {new_value} は最小値 {min_val} 未満のため、{min_val} に調整しました。")
                     if max_val is not None and new_value > max_val:
                         new_value = max_val
-                        print(f"警告: '{path}' の値 {new_value} は最大値 {max_val} を超えているため、{max_val} に調整しました。")
+                        logger.warning(f"警告: '{path}' の値 {new_value} は最大値 {max_val} を超えているため、{max_val} に調整しました。")
                 except ValueError:
-                    print(f"警告: '{path}' の値 '{new_value}' は無効な整数です。元の値を保持します。")
+                    logger.error(f"警告: '{path}' の値 '{new_value}' は整数ではありません。元の値を保持します。")
                     new_value = item.value # 無効な場合は元の値を保持
             elif item.item_type == "bool":
                 # BooleanVar.get() は既に適切なブール値を返す
@@ -392,7 +464,7 @@ class UI(tk.Toplevel):
             if self.settings.set_setting_value(path, new_value):
                 pass
             else:
-                print(f"設定 '{path}' を '{new_value}' に更新できませんでした。")
+                logger.warning(f"警告: 設定 '{path}' の更新に失敗しました。元の値を保持します。")
 
         # UserSettingsオブジェクトに保持されている現在の設定データをファイルに書き込む
         config_controller.write_configfile(self.settings)
@@ -410,7 +482,7 @@ class UI(tk.Toplevel):
 def select_file_path(targetitem, filetype):
     target_path = tkinter.filedialog.askopenfilename(filetypes=filetype)
     if target_path:
-        print(target_path)
+        logger.info(f"ファイルパスが選択されました: {target_path}")
         targetitem.set(target_path)
 
 

@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DesktopCharacter 総合マニュアル</title>
+    <style>
+        :root {
+            --primary-color: #005a9c;
+            --secondary-color: #77dd77;
+            --bg-color: #f9f9f9;
+            --text-color: #333;
+            --sidebar-bg: #ffffff;
+            --border-color: #ddd;
+            --accent-bg: #eef6fc;
+        }
+
+        body {
+            font-family: 'Segoe UI', Meiryo, 'Yu Gothic', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.8;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            justify-content: center; /* 中央寄せ */
+        }
+
+        /* サイドバー目次 */
+        #sidebar {
+            width: 260px;
+            height: 100vh;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            position: fixed;
+            left: 0;
+            top: 0;
+            overflow-y: auto;
+            padding: 20px;
+            box-sizing: border-box;
+            z-index: 100;
+        }
+
+        #sidebar h2 {
+            font-size: 1.1rem;
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        #toc-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .toc-item { margin-bottom: 5px; }
+        .toc-link {
+            text-decoration: none;
+            color: var(--text-color);
+            font-size: 0.9rem;
+            display: block;
+            padding: 6px 10px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        .toc-link:hover {
+            background-color: var(--accent-bg);
+            color: var(--primary-color);
+        }
+        .toc-child {
+            margin-left: 15px;
+            font-size: 0.85rem;
+            border-left: 1px solid var(--border-color);
+        }
+
+        /* メインコンテンツの外枠（中央配置用） */
+        #content-wrapper {
+            margin-left: 260px; /* サイドバーの幅 */
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* 実際のコンテンツエリア */
+        #content {
+            width: 100%;
+            max-width: 900px; /* 読みやすい最大幅 */
+            padding: 40px 30px;
+            box-sizing: border-box;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 50px;
+            padding-bottom: 20px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.2rem;
+            margin: 0;
+            border-bottom: none;
+        }
+
+        section {
+            background: #fff;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 40px;
+            scroll-margin-top: 20px;
+        }
+
+        h2 {
+            color: var(--primary-color);
+            font-size: 1.6rem;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 8px;
+            margin-top: 0;
+        }
+
+        h3 {
+            color: #444;
+            font-size: 1.25rem;
+            margin-top: 30px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+
+        p { margin: 1em 0; }
+
+        .step, .section-inner {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .warning, .warning-box {
+            background-color: #fffbe6;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 20px 0;
+        }
+
+        code, .code {
+            background-color: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: "Consolas", "Monaco", monospace;
+            color: #d63384;
+            font-size: 0.95em;
+        }
+
+        .code-block {
+            background-color: #eef;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 10px 0;
+            display: block;
+        }
+
+        ul, ol { margin-bottom: 1.2em; padding-left: 25px; }
+        li { margin-bottom: 0.5em; }
+
+        a { color: #0078d4; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        @media (max-width: 900px) {
+            #sidebar { width: 220px; }
+            #content-wrapper { margin-left: 220px; }
+        }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; }
+            #sidebar { width: 100%; height: auto; position: relative; border-right: none; }
+            #content-wrapper { margin-left: 0; }
+            #content { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- 目次 -->
+
+    <nav id="sidebar">
+        <h2>目次</h2>
+        <ul id="toc-list"></ul>
+    </nav>
+
+    <div id="content-wrapper">
+        <main id="content">
+            <header>
+                <h1>DesktopCharacter 総合マニュアル</h1>
+                <p>アプリケーションの利用方法と設定等に関するガイド</p>
+            </header>
+
+            <!-- 1. Readme & 使い方 -->
+            <section>
+                <h2>概要</h2>
+                    <h3>はじめに</h3>
+                    このアプリケーションは、デスクトップ上にAIキャラクターを召喚し、パソコンでの活動を少し賑やかにするためのツールです。<br>
+                    各種設定（最低でもAIの項目の設定が必要です。）を行うことでAIとの対話やあなたのPC利用状況に応じたコミュニケーションを楽しむことができます。<br>
+                    <br>
+
+                    <strong>動作環境</strong><br>
+                    OS: Windows 10 / 11<br>
+                    ※セキュリティソフトに身元不明のアプリとして誤検知される可能性があります。<br>
+                    <br>
+
+                    <strong>主な機能</strong><br>
+                    <ul>
+                        <li>AIキャラクターとの自由な会話</li>
+                        <li>音声合成による読み上げ機能</li>
+                        <li>好みの立ち絵（透過画像）の表示と、表情差分への対応</li>
+                        <li>AIキャラクターへのキャラ付けや規則の自由な変更</li>
+                        <li>ユーザアクティビティの記録機能</li>
+                    </ul>
+
+                    <h3>プライバシーポリシー</h3>
+                    アプリケーション内におけるユーザの個人情報の扱いについて以下の通りとします。
+                    <div class="section-inner">
+                    <strong>利用する情報</strong><br>
+                    アプリケーションは以下の情報を取得・収集・送信します。
+                    これらの項目は設定画面によって許可、制限を行うことができます。<br>
+                    <ul>
+                    a. ユーザがアプリケーション内で入力したテキスト<br>
+                    b. ユーザがアプリケーションを利用している時刻情報<br>
+                    c. アクティブウィンドウのタイトル名<br>
+                    d. 再生中のメディア情報(曲名、アーティスト名)<br>
+                    e. 上記b, c, dの項目を使ったユーザ情報の収集<br>
+                    </ul>
+                    <strong>情報の利用目的</strong><br>
+                    取得した情報はアプリケーション内でのユーザ体験を目的としてのみ利用され、
+                    開発者がこれらの情報を収集、保存、閲覧することはありません。<br>
+                    <br>
+                    <strong>情報の第三者提供</strong><br>
+                    会話動作、音声読み上げの際に、取得した情報を連携外部サービスへと送信します。
+                    各サービスでの個人情報の扱いはは各サービスのプライバシーポリシーをご確認ください。<br>
+                    </div>
+                    
+
+                    <h3>利用規約</h3>
+                    アプリケーションの扱いについての規約を次のように定めます。
+                    <div class="section-inner">
+                    <strong>免責事項</strong><br>
+                    アプリケーションの利用によって生じたいかなる損害についても開発者は一切の責任を負いません。
+                    自己の責任においてご利用ください。特に外部APIの利用料金については利用者自身の負担となります。<br>
+                    <strong>禁止事項</strong><br>
+                    アプリケーションの法令または公序良俗に違反する目的での使用、再配布、販売行為を禁止します。<br>
+                    <strong>権利表記</strong><br>
+                    アプリケーション内で利用するキャラクター画像や連携している外部サービスに関しての権利は各著作権に帰属します。<br>
+                    <strong>規約の変更</strong><br>
+                    本規約は予告なく変更される場合があります。
+                    </div>
+                    
+
+                    <h3>クレジット・外部サービス連携</h3>
+                    このアプリケーションは次のサービスや素材等を利用・連携しています。
+                    <ul>
+                        <li><strong>音声読み上げ</strong>
+                            <ul>
+                                <li>VOICEVOX</li>
+                                <li>Windows標準ナレーター</li>
+                            </ul>
+                        </li>
+                        <li><strong>AIサービス、ツール</strong>
+                            <ul>
+                                <li>Google Gemini</li>
+                                <li>Ollama</li>
+                            </ul>
+                        </li>
+                        <li><strong>キャラクター立ち絵</strong>
+                            <ul>
+                                <li>CHARAT-MONO</li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <h3>連絡先 (Contact)</h3>
+                    <p>不具合の報告や問い合わせ、意見、感想等は、以下のGoogleフォームにお願いします。</p>
+                    <p><a href="https://forms.gle/EToA3Br1aCPwUmqU8" target="_blank">お問い合わせフォーム (Google Forms)</a></p>
+                
+            </section>
+
+            <section>
+                <h2>AIサービスの設定</h2>
+                アプリケーションを通した会話の際に利用するAIサービスの設定案内です。<br>
+                会話の動作にはどちらかのサービスに接続する必要があります。
+                設定ウィンドウの<strong>AIサービスの選択</strong>項目で、GeminiかOllamaのどちらかを選択して利用してください。
+                
+                <h3>Google Gemini</h3>
+                Gooleの提供しているAIサービスGeminiを使った方法です。Googleアカウントが必要です。<br>
+                今回の手順では無料枠での利用となり、利用上限の設定と送信データの学習利用が行われます。<br>
+                <h4>1. Google AI StudioでAPIキーを取得する</h4>
+                <div class="step">
+                    <ol>
+                        <li>Webブラウザで <strong><a href="https://aistudio.google.com/" target="_blank">Google AI Studio</a></strong> にアクセスします（Googleアカウントが必要です）。</li>
+                        <li>画面左側のメニューから「<strong>Get API key</strong>」をクリックします。</li>
+                        <li>「<strong>Create API key in new project</strong>」ボタンをクリックして、新しいAPIキーを作成します。</li>
+                        <li>APIキーが生成されたら、コピーボタンをクリックしてクリップボードにコピーします。
+                            <div class="code-block">例: AIzaSy...（このような長い文字列です）</div>
+                        </li>
+                    </ol>
+                    <div class="warning">
+                        <strong>注意事項</strong><br>
+                        このAPIキーはパスワードと同じように扱い、他人に知られないように大切に保管してください。<br>
+                        流出や不正利用が疑われる場合はAPIキーを停止、削除する等の対応が必要になります。
+                    </div>
+                </div>
+                <h4>2. アプリケーション側の設定を行う</h4>
+                <div class="step">
+                    <ol>
+                        <li>キャラクターを右クリックし「<strong>設定</strong>」を選択して、設定ウィンドウを開きます。</li>
+                        <li>設定ウィンドウ内の「<strong>AIサービスの選択</strong>」の項目を<strong>Gemini</strong>に設定します。</li>
+                        <li>設定ウィンドウ内の「<strong>Gemini</strong>」の項目を探します。</li>
+                        <li><strong>APIキー</strong>の項目にコピーしたAPIキーを貼り付け、設定を保存、アプリを再起動します。</li>
+                        <li>再度設定ウィンドウを開いてGeminiの項目、モデルの隣にある更新ボタンを押した後、<strong>会話モデル</strong>を選択します。</li>
+                        <div class="warning">
+                            2026年1月時点では<strong>gemini-2.5-flash-lite</strong>等での動作確認ができています。<br>
+                            Googleによって提供モデルの変更が行われる場合があるためその際は都度モデルの変更等の対応が必要になります。<br>
+                        </div>
+                        <li>アプリを再起動し、起動時のメッセージで<strong>AIサービスとの接続</strong>項目が成功になっていれば完了です。</li>
+                    </ol>
+                </div>
+
+                <h3>Ollama</h3>
+                AIモデルをローカル環境で動作せる無料ツール、Ollamaと連携する方法です。
+                無料かつローカル環境で動作するため情報流出等を気にしすぎなくて済みます。
+                <h4>1. Ollamaのインストール</h4>
+                <div class="step">
+                    <ol>
+                        <li><strong><a href="https://ollama.com/" target="_blank">Ollama公式サイト</a></strong> からインストーラーをダウンロードし、インストールします。(手順省略)</li>
+                        <li>インストール後、Ollamaを起動してください。タスクトレイにアイコンが表示されます。</li>
+                        <div class="warning">
+                        Ollamaが起動している(タスクトレイに表示されている)状態で連携が行えます。利用の際はOllamaはアプリと別で別途起動してください。
+                                </div>
+                
+                    </ol>
+                </div>
+                <h4>2. モデルのセットアップ</h4>
+                <div class="step">
+                    <ol>
+                        <li>コマンドプロンプト・ターミナルを開きます。</li>
+                        <li><code>ollama pull モデル名</code>とコマンドを実行してモデルをダウンロードします。おすすめはgemma3です。<br>
+                            <div class="code-block">例：ollama run gemma3</div>
+                                
+                                <div class="warning">
+                                利用可能なモデルは <a href="https://ollama.com/library" target="_blank">Ollamaモデルライブラリ</a> で確認可能です。
+                                PU性能や日本語対応などある程度知識や調べものが必要になると思います。
+                                </div>
+                        </li>
+                        <li><code>ollama list</code>コマンドでモデルが表示されていればモデルセットアップは完了です。</li>
+                    </ol>
+                </div>
+
+                <h4>3. アプリ側での設定</h4>
+                <div class="step">
+                    <ol>
+                        <li>キャラクターを右クリックし「<strong>設定</strong>」を選択して、設定ウィンドウを開きます。</li>
+                        <li>設定ウィンドウ内の「<strong>AIサービスの選択</strong>」の項目を<strong>Ollama</strong>に設定します。</li>
+                        <li>設定ウィンドウ内の「<strong>Ollama</strong>」の項目を探します。</li>                        
+                        <li><strong>OllamaAPIのURL</strong> の項目に <span class="code">http://localhost:11434</span> が入力されているか確認します。</li>
+                            <div class="warning">
+                                Ollam側で設定されている外部連携用のURLです。デフォルトでは上記の値ですが、変更している場合は対応させてください。
+                            </div>
+                        <li><strong>モデル</strong>の項目で、更新ボタンを押した後モデルを選択、設定を保存します。</li>
+                        <li>アプリを再起動し、起動時のメッセージで<strong>AIサービスとの接続</strong>項目が成功になっていれ完了です。</li>
+                    </ol>
+                </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            </section>
+
+            <section>
+                <h2>音声読み上げの設定</h2>
+                アプリケーション内の設定ウィンドウ、<strong>合成音声</strong>の項目で設定することができます。会話の際にセリフを合成音声で読み上げます。
+                <h3>VOICEVOX</h3>
+                無料で使える音声読み上げソフトウェアのVOICEVOXと連携する方法です。
+                お使いのパソコンにVOICEVOXをインストールし、アプリ側から起動することで動作させます。
+                <h4>1. VOICEVOXのインストール</h4>
+                <div class="step">
+                    <ol>
+                        <li><strong><a href="https://voicevox.hiroshiba.jp/" target="_blank">VOICEVOX公式サイト</a></strong> からインストーラをダウンロードし、インストールします。(手順省略)</li>
+                        <li>VOICEVOXを起動します。VOICEVOXが起動していれば連携が可能ですが、次の手順での設定によってはアプリ起動時に自動で起動するようにもできます。</li>
+                    </ol>
+                </div>
+                
+                <h4>2. アプリケーションの設定</h4>
+                <div class="step">
+                    <ol>
+                        <li>キャラクターを右クリックし「<strong>設定</strong>」を選択して、設定ウィンドウを開きます。</li>
+                        <li>設定ウィンドウ内の「<strong>合成音声エンジンの選択</strong>」の項目を<strong>VOICEVOX</strong>に設定します。</li>
+                        <li>設定ウィンドウ内の「<strong>VOICEVOX設定</strong>」の項目を探します。</li>                        
+                        <li><strong>音声モデル</strong>の項目で、更新ボタンを押した後モデルを選択、設定を保存します。自動起動を設定しない場合は最後の手順まで飛んでかまいません。</li>
+                        <li><strong>VOICEVOXの起動パス</strong> の項目でVOICEVOXEngine(VOICEVOXのサーバ)の起動ファイル(run.exe)がを設定します。</li>
+                            <div class="warning">
+                                標準設定でインストールをした場合、次のどちらかのパスにあるかと思います。<br>
+                                1. <code>C:\Program Files\VOICEVOX\vv-engine\run.exe</code><br>
+                                2. <code>C:\Users\[あなたのユーザー名]\AppData\Local\Programs\VOICEVOX\vv-engine\run.exe</code>
+                            </div>
+                        <li>アプリを再起動し、会話の際に音声読み上げが行われていれば完了です。自動起動設定をしている場合は起動メッセージで成否が確認できます。</li>
+                    </ol>
+                </div>
+                
+                <h3>Windows標準ナレーター</h3>
+                Windowsの音声読み上げサービスを利用する方法です。
+                <h4>1. アプリケーションの設定</h4>
+                <div class="step">
+                    <ol>
+                        <li>キャラクターを右クリックし「<strong>設定</strong>」を選択して、設定ウィンドウを開きます。</li>
+                        <li>設定ウィンドウ内の「<strong>合成音声エンジンの選択</strong>」の項目を<strong>WindowsNarrator</strong>に設定します。</li>
+                        <li>設定ウィンドウ内の「<strong>WidnowsNarrator設定</strong>」の項目を探します。</li>                        
+                        <li><strong>音声モデル</strong>の項目で、更新ボタンを押した後モデルを選択、設定を保存します。</li>
+                        <li>アプリを再起動し、会話の際に音声読み上げが行われていれば完了です。</li>
+                    </ol>
+                </div>
+</h4>
+                
+            </section>
+
+
+            <section>
+                <h2>そのほかの機能</h2>
+                
+                <h3>キャラクター画像の変更</h3>
+                設定ウィンドウの<strong>キャラクター参照フォルダ</strong>の項目から、キャラクター画像は入っているフォルダを選択することでキャラクター画像の変更を行うことができます。<br>
+                    <h4>キャラクター画像の追加</h4>
+                    <div class="step">
+                    <ol>
+                        <li>アプリケーションが入っているフォルダの「立ち絵」フォルダ内に、立ち絵セット名のフォルダを作成します。</li>
+                        <li>作成したフォルダ内に表示したい立ち絵ファイル(.png)を入れます。<br>
+                            画像ファイル名は、キャラクターの表情を表すものにしてください。(例：「平穏.png」「笑顔.png」「怒り.png」)
+                        </li>
+                    </div>
+                
+                <h3>キャラクター設定のテキスト編集</h3>
+                アプリケーションが入っているフォルダ内の「<strong>Character_setting.txt</strong>」を編集することによって会話するキャラクターの設定を決めることができます。
+                このファイルの内容を参考に応答文章が作成されます。
+
+                <h3>ユーザアクティビティの記録と活用機能</h3>
+                5分ごとにアプリケーションで許可された項目を記録、1時間間隔で要約するなどしてアプリ内での会話で利用できるようにします。<br>
+                アプリケーションが入っているフォルダ内の「<strong>user_logs</strong>」フォルダに日ごとにファイルが作成されます。
+                <div class="warning">
+                AIサービスの使用量が大きくなるため使用量・料金の増加に気を付けてください。<br>
+                また、ユーザの活動時間等の個人情報を多大に含むのでOllamaでの動作を推奨します。
+                </div>
+
+
+                <h3>データの引継ぎ方法</h3>
+                旧版から新版へデータを引き継ぐための手順です。
+                main.exe, Readmeのドキュメント以外のファイルを新版のフォルダへコピー、移動させます。<br>
+                <div class="warning">
+                各ファイルは場合によっては引き継ぎが行えない場合があります。ご了承ください。
+                </div>
+                
+            </section>
+
+
+
+
+
+
+        </main>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const content = document.getElementById('content');
+            const tocList = document.getElementById('toc-list');
+            const headings = content.querySelectorAll('h2, h3');
+            
+            let h2Count = 0;
+            let h3Count = 0;
+
+            headings.forEach((heading, index) => {
+                const isH2 = heading.tagName.toLowerCase() === 'h2';
+                
+                if (isH2) {
+                    h2Count++;
+                    h3Count = 0;
+                    heading.textContent = h2Count + '. ' + heading.textContent;
+                } else {
+                    h3Count++;
+                    heading.textContent = h2Count + '-' + h3Count + '. ' + heading.textContent;
+                }
+
+                const id = 'nav-point-' + index;
+                heading.id = id;
+
+                const li = document.createElement('li');
+                li.className = 'toc-item' + (isH2 ? '' : ' toc-child');
+                
+                const a = document.createElement('a');
+                a.href = '#' + id;
+                a.className = 'toc-link';
+                a.textContent = heading.textContent;
+                
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+                });
+
+                li.appendChild(a);
+                tocList.appendChild(li);
+            });
+        });
+    </script>
+</body>
+</html>
