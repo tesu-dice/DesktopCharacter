@@ -17,15 +17,18 @@ from PIL.Image import FLIP_LEFT_RIGHT
 #プログラムのインポート
 from services.config_controller import UserSettings
 from services.WindowsInfoCollecter import get_TotalMonitorSize
+from services.Event_Bus import EventBus
+
 
 
 #キャラクター画像を管理するクラス
 class charaimg_controller():
-    def __init__(self, win_h, win_w, setting:UserSettings):
+    def __init__(self, win_h, win_w, setting:UserSettings, bus:EventBus):
         self.win_h = win_h
         self.win_w = win_w
         self.setting = setting
         self.imgs ={} #画像名：画像ファイルの辞書
+        self.bus = bus
 
         
         self.load_imgs()
@@ -38,6 +41,8 @@ class charaimg_controller():
         except:
             self.bus.publish("Req_PopUpMessage", "info", "エラーメッセージ", "立ち絵情報の取得に失敗しました。")
             files = os.listdir("立ち絵/CHARAT-MONO/")
+            dir_path = "立ち絵/CHARAT-MONO/"
+        
         #画像の名前と画像を適正サイズに変更して保存
         for f in files :
             image = Image.open(dir_path + f)  # 画像ファイル名を指定
@@ -65,7 +70,7 @@ class CharacterLabel(tk.Label):
         self.bus.subscribe("SettingsUpdated", self.on_settings_updated)
         
         _size = self.setting.get_setting_value("ApplicationSettings.CharacterImage.Size")
-        self.character_image_manager = charaimg_controller(win_h=_size, win_w=_size, setting=self.setting)
+        self.character_image_manager = charaimg_controller(win_h=_size, win_w=_size, setting=self.setting, bus=self.bus)
         self._init_image()
         self.place( x=self.master.winfo_screenwidth()/2 + abs(get_TotalMonitorSize()[2]),
                     y=self.master.winfo_screenheight()/2 + abs(get_TotalMonitorSize()[3])
@@ -110,7 +115,7 @@ class CharacterLabel(tk.Label):
 
         # 新しい設定で画像を再読み込み
         _size = self.setting.get_setting_value("ApplicationSettings.CharacterImage.Size")
-        self.character_image_manager = charaimg_controller(win_h=_size, win_w=_size, setting=self.setting)
+        self.character_image_manager = charaimg_controller(win_h=_size, win_w=_size, setting=self.setting, bus=self.bus)
         self._init_image()
 
         # ウィンドウの位置も更新される可能性があるため再配置

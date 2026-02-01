@@ -1,14 +1,6 @@
 """
 20250318 geminiのAPIをローカルでたたいて会話する
 
-今後
-VoiceVoxEngineから音声を引っ張ってくる。
-立ち絵を表示してせりじゅと連携させる。
-    現在はboidoll検討中、立ち絵素材は借りてくる
-
-20250517
-ライブラリが変わったりで仕様変更があったポイ？
-https://ai.google.dev/gemini-api/docs/quickstart?hl=ja&lang=python
 """
 #ライブラリの読み込み
 import google.generativeai as genai
