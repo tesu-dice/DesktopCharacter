@@ -45,11 +45,11 @@ class ContextMenuManager:
         self.ui.talk_window.focus_force()
         
     def show_settingUI(self):
-        if self.ui.setting_window is None :
+        if self.ui.setting_window is None or not self.ui.setting_window.winfo_exists():
+            print("設定ウィンドウ=None, 設定ウィンドウを作成します。")
             self.ui.setting_window = UI_settings.UI(self.ui, self.bus, self.ui.setting)
-        elif self.ui.setting_window.winfo_exists():
-            self.ui.setting_window = UI_settings.UI(self.ui, self.bus, self.ui.setting)
-        else:
+        else:#すでに存在している場合
+            print("設定ウィンドウ=存在, 設定ウィンドウを表示します。")
             self.ui.setting_window.deiconify()
             self.ui.setting_window.focus_force()
 
@@ -179,7 +179,15 @@ class UI(tk.Tk):
             if image_name:
                 self.update_character_image(image_name)
             
-            self.TTS.text_to_speech(text_to_speak, debug=debug)
+            #読み上げ処理
+            engine = self.setting.get_setting_value("VoiceSettings.engine")
+            if engine == "VOICEVOX":
+                speaker = self.setting.get_setting_value("VoiceSettings.VOICEVOX.Model")
+                speaker = speaker.split("=")[-1]
+                self.TTS.text_to_speech(text_to_speak, speaker=speaker, debug=debug)
+            elif engine == "windowsNarrator":
+                speaker = self.setting.get_setting_value("VoiceSettings.windowsNarrator.Model")
+                self.TTS.text_to_speech(text_to_speak, model_description=speaker, debug=debug)
                 
     def start_TTS_Server(self):
         print("start_TTS_Server() called.")

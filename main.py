@@ -126,14 +126,14 @@ class myapp():
             debug = debug + 1 if debug >= 0 else -1
         
         #リリースバージョンの確認
-        CURRENT_APP_VERSION = "1.0.2" # 現在のバージョンを設定
+        CURRENT_APP_VERSION = "20260201" # 現在のバージョンを設定
         _result = check_nowver_is_newestver("tesu-dice", "DesktopCharacter_forRelease", CURRENT_APP_VERSION)
-        if _result[0] == False:
+        if _result[0] == False:#更新有の際の催促用メッセージ
             print(f"新しいバージョンが利用可能です！ 最新バージョン: {_result[1]}, 現在のバージョン: {_result[2]}")
             print("最新版をダウンロードしてください")
-        else :
+        else :#通常の起動メッセージ
             print(f"お使いのバージョンは最新です。 最新バージョン: {_result[1]}, 現在のバージョン: {_result[2]}")
-        _start_info_texts += f"---バージョン情報---\n{'最新です。' if _result[0] else '更新があります。'} [{_result[1]}] -> [{_result[2]}]\n\n"
+        _start_info_texts += f"---バージョン情報---\n{'最新です。' if _result[0] else '更新があります。'} [{_result[2]}] -> [{_result[1]}]\n\n"
         
 
 

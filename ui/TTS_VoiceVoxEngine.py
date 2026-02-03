@@ -16,14 +16,15 @@ import subprocess
 # VOICEVOXサーバの起動
 def start_server(path, usegpu:bool, debug = -1):
     command = [path]
-    command = command.append("--use_gpu") if usegpu==True else command
+    if usegpu == True:
+        command.append("--use_gpu")
     if debug >-1:
         indent = "  " * debug
         print(f"{indent}VoiceVoxEngine_talk.py start_server() called. command = {command}")
         debug = debug + 1 if debug >= 0 else -1
 
     try:
-        process_id = subprocess.Popen(path)
+        process_id = subprocess.Popen(command, creationflags=subprocess.CREATE_NO_WINDOW)
     except Exception as e:
         print("VoiceVoxEngineの実行に失敗しました。")
         print(e)
@@ -89,7 +90,7 @@ def synthesis(speaker, query_data,max_retry):
             return None
             
 
-def text_to_speech(texts, speaker=68, max_retry=20, debug=-1):
+def text_to_speech(texts, speaker, max_retry=20, debug=-1):
     if not texts: # FalseやNone、空文字列をまとめてチェック
         texts = "ちょっと、通信状態が悪いかも？"
     
@@ -122,7 +123,7 @@ def text_to_speech(texts, speaker=68, max_retry=20, debug=-1):
                 continue # 次の文章へ
 
         except Exception as e:
-            print(f"エラー: 音声生成中に例外が発生しました。テキスト: {sentence}, エラー: {e}")
+            print(f"エラー: 音声生成中に例外が発生しました。テキスト: {sentence}, speaker: {speaker},エラー: {e}")
             continue
 
         # 再生処理

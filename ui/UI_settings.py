@@ -196,10 +196,7 @@ class UI(tk.Toplevel):
             if full_path == "ApplicationSettings.CharacterImage.Folder":
                 item_obj.options = get_CharacterFolders()   
             elif full_path == "VoiceSettings.VOICEVOX.Model":
-                if self.parent_ui.engine_process is not None:
-                    item_obj.options = TTS_VoiceVoxEngine.get_speakers()
-                else :
-                    item_obj.options = ["サーバを起動していません。"]
+                item_obj.options = TTS_VoiceVoxEngine.get_speakers()
             elif full_path == "VoiceSettings.windowsNarrator.Model":
                 item_obj.options = TTS_WindowsNarratorManager.get_SAPIVoice_names()
             combobox = ttk.Combobox(parent_widget_frame, textvariable=var, values=item_obj.options, state="readonly")

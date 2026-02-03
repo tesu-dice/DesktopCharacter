@@ -449,7 +449,7 @@ def get_default_data() -> Dict[str, Any]:
                     "value": "None",
                     "options": [
                         "None",
-                        "WindowsNarrator",
+                        "windowsNarrator",
                         "VOICEVOX"
                     ]
                 },
