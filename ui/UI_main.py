@@ -46,10 +46,8 @@ class ContextMenuManager:
         
     def show_settingUI(self):
         if self.ui.setting_window is None or not self.ui.setting_window.winfo_exists():
-            print("設定ウィンドウ=None, 設定ウィンドウを作成します。")
             self.ui.setting_window = UI_settings.UI(self.ui, self.bus, self.ui.setting)
         else:#すでに存在している場合
-            print("設定ウィンドウ=存在, 設定ウィンドウを表示します。")
             self.ui.setting_window.deiconify()
             self.ui.setting_window.focus_force()
 
@@ -105,7 +103,7 @@ class UI(tk.Tk):
         # ウィンドウ位置の初期化
         self.after(10, self.refresh_window_position)
         self.apply_settings(self.setting)
-        logger.debug("UIの初期化が完了しました。")
+        logger.info("UIの初期化が完了しました。")
 
     def _initialize_tts(self):
         """設定に基づいてTTSクライアントを初期化または再初期化します。"""

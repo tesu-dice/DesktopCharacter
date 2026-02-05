@@ -424,9 +424,8 @@ class UI(tk.Toplevel):
 
     def save_and_apply_settings(self):
         """
-        すべてのUIウィジェットから現在の値を取得し、それを実際のUserSettingsオブジェクトに適用し、
-        最終的にファイルに保存します。
-        その後、設定更新を通知し、ウィンドウを閉じます。
+        すべてのUIウィジェットから現在の値を取得し、それを実際のUserSettingsオブジェクトに適用、ファイルに保存。
+        その後、設定更新を通知、ウィンドウを閉じる。
         """
         logger.debug("設定を反映ボタンが押されました。すべてのUI値を読み取り、設定に適用します。")
         for path, var_obj in self._widget_vars.items():
