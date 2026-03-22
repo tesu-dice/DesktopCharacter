@@ -13,10 +13,11 @@ import time
 from services import WindowsInfoCollecter
 from services.config_controller import UserSettings, read_configfile
 from services import UserDataLogger
-
 from services import Event_Bus
 from ui import UI_main
 from ai import AI_main
+from ai import new_AI_main
+from ai_tools.tools_main import ToolExecutor
 from services.release_check import check_nowver_is_newestver
 from services.WindowsInfoCollecter import get_datetime
 from ui.TTS_VoiceVoxEngine import start_server
@@ -63,8 +64,9 @@ class myapp():
             #各種サービス要素
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.bus, self.setting, debug=debug)
         self.UserDataLoger = UserDataLogger.UserActivityManager(self.bus, dir = basedir)
-        self.AI_Manager = AI_main.AI_Manager(self.bus, self.setting, TalkHistory, debug=debug)
+        self.AI_Manager = new_AI_main.AI_Manager(self.bus, self.setting, TalkHistory, debug=debug)
         self.ui = UI_main.UI(self.bus, self.setting, debug=debug)
+        self.ai_tools = ToolExecutor(self.bus, self.setting, debug=debug)
         #イベントバスへの購読設定
         self._setup_event_listeners()
         
@@ -240,7 +242,7 @@ class myapp():
         if self.setting.get_setting_value("ApplicationSettings.Permission.ActiveWindow") == True:
             w = "\nアクティブなウィンドウ：" + self.WinInfo.get_activate_window()
         if self.setting.get_setting_value("ApplicationSettings.Permission.PlayingMedia") == True:
-            m = "\n再生中のメディア：" + self.WinInfo.get_plaing_media(debug = debug + 1 if debug >= 0 else -1) 
+            m = "\n再生中のメディア：" + self.WinInfo.get_plaing_media() 
         send_text = text + t + w + m
         self.bus.publish("MessageInput", {"role": "user", "parts":[send_text]}, debug=debug)
 
@@ -254,13 +256,7 @@ def start_app(engine_process = None, TalkHistory = [], debug = -1):
     app = myapp(engine_process=engine_process, TalkHistory=TalkHistory, debug=debug)
     app.ui.mainloop()
 
-def get_CharacterFolders(debug=-1):
-    files = os.listdir("立ち絵")
-    if debug >= 0:
-        indent = "  " * debug
-        print(f"{indent}UI.py get_CharacterFolders() called.")
-        print(f"{indent}loaded files = {files}")
-    return files
+
 
 
 
