@@ -34,6 +34,7 @@ class GoogleScheduleControl:
                 )
                 creds = flow.run_local_server(port=0, access_type="offline", prompt="consent")
 
+            # トークンをjsonアフィルとして残す
             with open(OAUTH_TOKEN_FILE, "w") as token:
                 token.write(creds.to_json())
 
@@ -140,6 +141,10 @@ class GoogleScheduleControl:
                     start = e["start"].get("dateTime", e["start"].get("date")); end = e["end"].get("dateTime", e["end"].get("date"))
                     time_str, summary = self._format_event_time(start, end), self._sanitize_text(e.get("summary", "（タイトルなし）"))
                     description = self._sanitize_text(e.get("description", ""))
+                    # Taskの場合説明を取得できず、はURLが含まれるので除外
+                    if "tasks.google.com" in description:
+                        description = ""
+                        continue
                     f.write(f"| {time_str} | {summary} | {description} |\n")
                 f.write("\n")
             f.write("## 自由記述\n")
@@ -151,8 +156,9 @@ class GoogleScheduleControl:
 def main():
     try:
         gcal = GoogleScheduleControl()
-        start_date = datetime.date(2025, 9, 1)
-        end_date = datetime.date(2026, 1, 10)
+        start_date = datetime.date(2026, 2, 1)
+        
+        end_date = datetime.date(2026, 2, 28)
 
         current_date = start_date
         while current_date <= end_date:
