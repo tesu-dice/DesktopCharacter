@@ -1,0 +1,8 @@
+pywin32
+screeninfo
+pywinrt # winrtの機能を利用するために必要となる場合があります
+requests
+simpleaudio
+Pillow
+google-generativeai
+google-api-core
