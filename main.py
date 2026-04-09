@@ -16,7 +16,6 @@ from services import UserDataLogger
 from services import Event_Bus
 from ui import UI_main
 from ai import AI_main
-from ai import new_AI_main
 from ai_tools.tools_main import ToolExecutor
 from services.release_check import check_nowver_is_newestver
 from services.WindowsInfoCollecter import get_datetime
@@ -64,7 +63,7 @@ class myapp():
             #各種サービス要素
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.bus, self.setting, debug=debug)
         self.UserDataLoger = UserDataLogger.UserActivityManager(self.bus, dir = basedir)
-        self.AI_Manager = new_AI_main.AI_Manager(self.bus, self.setting, TalkHistory, debug=debug)
+        self.AI_Manager = AI_main.AI_Manager(self.bus, self.setting, TalkHistory, debug=debug)
         self.ui = UI_main.UI(self.bus, self.setting, debug=debug)
         self.ai_tools = ToolExecutor(self.bus, self.setting, debug=debug)
         #イベントバスへの購読設定

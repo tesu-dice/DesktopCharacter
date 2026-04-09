@@ -71,7 +71,7 @@ class AI_Manager():
 
         # 準備
         tool_descriptions = self.tool_executor.get_tools_descriptions()#AIの利用するツールの情報一覧
-        print(tool_descriptions)
+        #print(tool_descriptions)
         tool_use_sample =   {
                             "tools":[
                                 {
@@ -79,16 +79,20 @@ class AI_Manager():
                                     "arguments": {}
                                 },
                                 {
-                                "name": "get_current_time",
-                                "arguments": {}
+                                    "name": "get_current_time",
+                                    "arguments": {}
                                 },
                                 {
-                                "name": "get_playing_media",
-                                "arguments": {}
+                                    "name": "get_playing_media",
+                                    "arguments": {}
                                 }
                             ]
                             }
         tool_use_sample_text = json.dumps(tool_use_sample, indent=2)
+        response_sample =   {
+                                "response": "ユーザーはVisual Studio Codeで、main.pyというファイルを開いているようです。現在時刻は2026年03月29日16時21分です。どのような手伝いをしましょうか？"
+                            }
+        response_sample_text = json.dumps(response_sample, ensure_ascii=False, indent=2)
         char_img_list = self.load_imgs(self.setting.get_setting_value("ApplicationSettings.CharacterImage.Folder"))#キャラ画像一覧
         self.add_talkhistory(input_dict, debug)## history参照の前に追加
         history_context = "\n".join([f"{m['role']}: {m['parts'][0]}" for m in self.history[-self.active_history_num:]])#ここまでの会話履歴を文章として成形
@@ -105,12 +109,12 @@ class AI_Manager():
             # Thought
             thought_content =[]
             thought_prompt = (f"あなたは思考専門のユニットです。ユーザーの入力を受け、応答に必要なツールを選択してJSON形式で応答を出力してください。\n"
-                              f"必要な情報がそろったと判断した場合は、応答文のみを出力してください。\n"
+                              f"必要な情報がそろったと判断した場合は、応答の際に必要な情報および応答の方針についてのみ出力してください。\n"
                               f"# 【現在の会話履歴】\n{history_context}\n\n"
                               f"# 【現在ツールを利用して取得している情報】\n{tool_infos}\n"
                               f"# 【利用可能なツール】\n{tool_descriptions}\n"
-                              f"# 【ツール利用応答の例】\n{tool_use_sample_text}\n"
-                              f"# 【応答文の例】\nこんにちは、今日はいい天気ですね。"
+                              f"# 【ツール利用応答文の例】\n{tool_use_sample_text}\n"
+                              f"# 【応答文の例】\n{response_sample_text}"
                               )
             thought_content.append({"role": "user", "parts": [thought_prompt]})
             if react_history:
@@ -119,13 +123,10 @@ class AI_Manager():
             thought_text = resp["text"]
             total_token_count += resp["token_count"]
             react_history.append({"role": "model", "parts": [thought_text]})
-            log_debug(f"Thought prompt: {thought_content}", 2)
-            log_debug(f"Thought response: {thought_text}", 2)
+            log_debug(f"Thought prompt:\n {thought_content}", 2)
+            log_debug(f"Thought response:\n {thought_text}", 2)
 
             # Action
-
-            # ActionかFinalAnserかを判別
-            llm_is_thinking = False
             # JSON形式（{ ... }）が含まれているか正規表現で検索
             json_match = re.search(r'(\{.*\})', thought_text, re.DOTALL)
             if json_match :
@@ -137,7 +138,8 @@ class AI_Manager():
                     json_str = json_match.group(1)
                     data = json.loads(json_str)
                     tools_list = data.get("tools", [])
-                    
+                    response = data.get("response", "")
+
                     for tool_call in tools_list:
                         t_name = tool_call.get("name")
                         t_args = tool_call.get("arguments", {})
@@ -149,6 +151,17 @@ class AI_Manager():
                     # ツールの利用結果をReAct用の会話履歴に追加
                     tooluse_content = {"role": "user", "parts": [f"ツール利用の結果\n{tool_infos}"]}
                     react_history.append(tooluse_content)
+
+
+
+                    # responseを出力
+                    if response != "":
+                        print("response json find.")
+                        output_dict = {"role": "model", "parts": [response], "token_count": total_token_count}
+                        self.add_talkhistory(output_dict)
+                        self.bus.publish("AIGenerateMessage", output_dict)
+                        return 
+
                 except Exception as e:
                     log_debug(f"Action Error: {e}", 2)
 
@@ -166,7 +179,8 @@ class AI_Manager():
         # 失敗時
         self.bus.publish("AIGenerateMessage", {"role": "model", "parts": ["考えがまとまりませんでした。"], "token_count": total_token_count})
 
-        #入力された一文の会話辞書からRAGを使う際のデータを選択する。将来的にはリクエストを複数strのlist形式で生成するかも？
+
+    #入力された一文の会話辞書からRAGを使う際のデータを選択する。将来的にはリクエストを複数strのlist形式で生成するかも？
     def make_rag_request(self, input_dict : dict, debug: int = -1):
         #AIの指定がなかった場合
         if self.AI_client is None:

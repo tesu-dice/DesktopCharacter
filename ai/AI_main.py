@@ -27,6 +27,8 @@ True/Falseで接続、strで詳細なメッセージを返す。
 
 """
 import os
+import re
+import json
 import threading
 import logging
 logger = logging.getLogger(__name__)
@@ -36,7 +38,7 @@ from ai import AI_geminiAPI
 from ai import AI_ollama
 from services.Event_Bus import EventBus
 from services.config_controller import UserSettings
-
+from ai_tools.tools_main import ToolExecutor
 
 
 class AI_Manager():
@@ -45,7 +47,7 @@ class AI_Manager():
         self.setting = setting
         self.history = TalkHistory
         self.AI_client = None # AIクライアントのインスタンスを保持
-
+        self.tool_executor = ToolExecutor(self.bus, self.setting, debug=debug)
         self.bus.subscribe("SettingsUpdated", self.on_settings_updated)
 
         self._initialize_client()
@@ -83,17 +85,18 @@ class AI_Manager():
                             "## 応答例（立ち絵ファイル名：セリフ）\n"\
                             "平穏.png：おはようございます。\n" \
                             "笑顔.tiff：今日もいい天気ですね。\n" \
-                            "期待.png：今日も一日頑張りましょう。\n"\
-                            "# 立ち絵ファイル名\n"
+                            "期待.png：今日も一日頑張りましょう。\n"
+                            
         #立ち絵ファイル名を追記
-        base_prompt += self.load_imgs(dir_name=self.setting.get_setting_value("ApplicationSettings.CharacterImage.Folder"))+"\n#キャラクター設定\n"
+        self.character_img_list = self.load_imgs(dir_name=self.setting.get_setting_value("ApplicationSettings.CharacterImage.Folder"))
+        base_prompt += f"# 立ち絵ファイル名\n{self.character_img_list}\n#キャラクター設定\n"
         f= open("Character_setting.txt", encoding="utf-8")
-        Character_set_text=""
+        self.Character_set_text=""
         for line in f:
             line.strip("\n")
-            Character_set_text +=line
+            self.Character_set_text +=line
         f.close()
-        self.init_prompt= [{"role": "user", "parts":[base_prompt + Character_set_text]},{"role": "model", "parts":["了解しました。"]}]
+        self.init_prompt= [{"role": "user", "parts":[base_prompt + self.Character_set_text]},{"role": "model", "parts":["了解しました。"]}]
 
 
     def add_talkhistory(self, input_dict:dict, debug = -1):
@@ -146,15 +149,176 @@ class AI_Manager():
             past_contents = self.history[-self.active_history_num:]
         else:
             past_contents = self.history
-        #返答の生成
-        input_contents = self.init_prompt + past_contents
 
-        response = self.AI_client.response(input_contents=input_contents, debug = debug)
-        output_dict = {"role": "model", "parts":[response["text"]], "token_count": response["token_count"]}
-        self.add_talkhistory(output_dict, debug)
-        #イベント発行
-        self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
+        
+        #react動作を行う場合
+        react_planing_is = self.setting.get_setting_value("パス未設定")
+        if True:
+            react_resopnse = self.react_planing(debug= 1 )
+            character_response = self.character_response(base_dict=react_resopnse, debug=1)
+            print(f"react_resposne:\n{react_resopnse}")
+            print(f"chara_response:\n{character_response}")
+            total_token_count = react_resopnse["token_count"] + character_response["token_count"]
 
+            result = {"role": "model", "parts": character_response["parts"], "token_count": total_token_count}
+            self.add_talkhistory(result)
+            self.bus.publish("AIGenerateMessage", result, debug=debug)
+        
+        #通常の応答
+        else:
+            #返答の生成
+            input_contents = self.init_prompt + past_contents
+
+            response = self.AI_client.response(input_contents=input_contents, debug = debug)
+            output_dict = {"role": "model", "parts":[response["text"]], "token_count": response["token_count"]}
+            self.add_talkhistory(output_dict, debug)
+            #イベント発行
+            self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
+
+    # react動作によって情報収集や方針決めを行う-> dict
+    def react_planing(self,  max_react_steps: int = 5, debug: int = -1):
+        if self.AI_client is None:
+            self.bus.publish("AIGenerateMessage", {"role": "model", "parts": ["AIサービス未選択"], "token_count": 0})
+            return
+
+        def log_debug(message, level=0):
+            if debug > -1:
+                print(f"{'  ' * level}{message}")
+
+        # 準備
+        tool_descriptions = self.tool_executor.get_tools_descriptions()#AIの利用するツールの情報一覧
+        log_debug(tool_descriptions, level=debug)
+        tool_use_sample =   {
+                            "tools":[
+                                {
+                                    "name": "get_active_window",
+                                    "arguments": {}
+                                },
+                                {
+                                    "name": "get_current_time",
+                                    "arguments": {}
+                                },
+                                {
+                                    "name": "get_playing_media",
+                                    "arguments": {}
+                                }
+                            ]
+                            }
+        tool_use_sample_text = json.dumps(tool_use_sample, indent=2)
+        response_sample =   {
+                                "response": "ユーザーはVisual Studio Codeで、sample.pyというファイルを開いているようです。現在時刻はyyyy年mm月dd日HH時MM分です。どのような手伝いをしましょうか？"
+                            }
+        response_sample_text = json.dumps(response_sample, ensure_ascii=False, indent=2)
+        
+        history_context = "\n".join([f"{m['role']}: {m['parts'][0]}" for m in self.history[-self.active_history_num:]])#ここまでの会話履歴を文章として成形
+        tool_infos = ""# ツールの実行結果を格納する用
+        react_history = [] #ツール利用などでの応答を与えるための履歴情報
+       
+
+        total_token_count = 0
+
+        for step in range(max_react_steps):
+            log_debug(f"--- LLM loop {step + 1} ---", 1)
+
+            # Thought
+            thought_content =[]
+            thought_prompt = (f"あなたは思考専門のユニットです。ユーザーの入力を受け、応答に必要なツールを選択してJSON形式で応答を出力してください。\n"
+                              f"必要な情報がそろったと判断した場合は、応答の際に必要な情報および応答の方針についてのみ出力してください。\n"
+                              f"# 【現在の会話履歴】\n{history_context}\n\n"
+                              f"# 【現在ツールを利用して取得している情報】\n{tool_infos}\n"
+                              f"# 【利用可能なツール】\n{tool_descriptions}\n"
+                              f"# 【ツール利用応答文の例】\n{tool_use_sample_text}\n"
+                              f"# 【応答文の例】\n{response_sample_text}"
+                              )
+            thought_content.append({"role": "user", "parts": [thought_prompt]})
+            if react_history:
+                thought_content.extend(react_history)# リストの後ろにリストを付けるからextend
+            resp = self.AI_client.response(thought_content)
+            thought_text = resp["text"]
+            total_token_count += resp["token_count"]
+            react_history.append({"role": "model", "parts": [thought_text]})
+            log_debug(f"Thought prompt:\n {thought_content}", level=debug)
+            log_debug(f"Thought response:\n {thought_text}", level=debug)
+
+            # Action
+            # JSON形式（{ ... }）が含まれているか正規表現で検索
+            json_match = re.search(r'(\{.*\})', thought_text, re.DOTALL)
+            llm_is_thinking = False
+            if json_match :
+                llm_is_thinking = True
+
+            # Action: json部分を抽出
+            if llm_is_thinking:
+                try:
+                    json_str = json_match.group(1)
+                    data = json.loads(json_str)
+                    tools_list = data.get("tools", [])
+                    response = data.get("response", "")
+
+                    for tool_call in tools_list:
+                        t_name = tool_call.get("name")
+                        t_args = tool_call.get("arguments", {})
+                        obs = self.tool_executor.execute_tool(t_name, t_args)
+                        log_debug(f"{t_name}: {obs}", level=debug)
+                        # 履歴に結果を追加してループ継続
+                        tool_infos += f"{t_name}: {obs}\n"
+
+                    # ツールの利用結果をReAct用の会話履歴に追加
+                    tooluse_content = {"role": "user", "parts": [f"ツール利用の結果\n{tool_infos}"]}
+                    react_history.append(tooluse_content)
+
+
+
+                    # responseを出力
+                    if response != "":
+                        log_debug("response json find.", level=debug)
+                        output_dict = {"role": "model", "parts": [response], "token_count": total_token_count}
+                        return output_dict
+
+                except Exception as e:
+                    logger.warning(f"Action Error: {e}")
+                    log_debug(f"Action Error: {e}", level=debug)
+
+            # 解析：Final Answer のチェック
+            else:
+                log_debug("llm thinking end.", level=debug)
+                output_dict = {"role": "model", "parts": [thought_text], "token_count": total_token_count}
+                return output_dict
+
+        # 失敗時
+        logger.warning(f"AI_main.py react_planing() failed. thought_text={thought_text}")
+        output_dict = {"role": "model", "parts": [thought_text], "token_count": total_token_count}
+        return output_dict
+
+    # base_dictの文章をキャラクター設定に沿った文章に変更して返す
+    def character_response(self, base_dict : dict, debug: int = -1):
+        debug = 1
+        if debug != -1:
+            indent = "  " * debug
+            print(f"{indent}AI_main.py character_response() called.")
+        history_context = "\n".join([f"{m['role']}: {m['parts'][0]}" for m in self.history[-self.active_history_num:]])#ここまでの会話履歴を文章として成形
+        character_base_prompt = (f"あなたはユーザのPC上で動作するキャラクターです。「応答方針」に示す文章をキャラクター設定に従った受け答えに変更してください。\n"+
+                                f"これまでの会話履歴および回答例は「これまでの文章」を参照してください。"
+                                f"# 応答規則\n"+
+                                f"- セリフはキャラクターとして会話するように応答し、文章量は最大で3文程度としてください。\n"+
+                                f"- 立ち絵ファイル名は別項目で示されたもののみとし、セリフと合わせて適切なものを選択してください。\n"+
+                                f"## 応答例（立ち絵ファイル名：セリフ）\n"+
+                                f"平穏.png：おはようございます。\n"+
+                                f"笑顔.jpg：今日もいい天気ですね。\n"+ 
+                                f"期待.png：今日も一日頑張りましょう。\n"+
+                                f"# キャラクター設定\n"+
+                                f"{self.Character_set_text}\n"+
+                                f"# 立ち絵ファイル一覧\n"+
+                                f"{self.character_img_list}\n"+
+                                f"# これまでの文章\n"+
+                                f"{history_context}"+
+                                f"# 応答方針\n"+
+                                f"{base_dict['parts']}"
+                                )
+        print(f"{indent}character_base_prompt:\n{character_base_prompt}")
+        response = self.AI_client.response(input_contents=[{"role": "user", "parts": [character_base_prompt]}], debug=debug)
+        result = {"role": "model", "parts": [response["text"]], "token_count": response["token_count"]}
+        return result 
     #RAG情報アリでの応答関数(基本はresponseのコピー)
     def response_withRAG(self, input_dict : dict, rag_info:str, debug: int = -1,):
         #AIの指定がなかった場合

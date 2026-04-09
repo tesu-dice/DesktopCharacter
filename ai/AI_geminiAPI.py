@@ -81,7 +81,7 @@ class geminiAI():
             return names
         
         #入力文字列をAIに送信、返答を返す。
-        def response(self, input_contents, debug=-1):
+        def response(self, input_contents:list, debug=-1):
             if debug >= 0:
                 indent = "  " * debug
                 print(f"{indent}geminiAPI.py response() was called.")
