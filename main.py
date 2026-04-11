@@ -13,7 +13,6 @@ import time
 from services import WindowsInfoCollecter
 from services.config_controller import UserSettings, read_configfile
 from services import UserDataLogger
-
 from services import Event_Bus
 from ui import UI_main
 from ai import AI_main
@@ -213,7 +212,7 @@ class myapp():
             print("5分に一回の処理です。")
             self.mm_last = mm_now
             #ユーザアクティビティログの要求（時刻とログの許可がある場合）
-            allow_time_access = self.setting.get_setting_value("ApplicationSettings.Permission.CurrentTime")
+            allow_time_access = self.setting.get_setting_value("ApplicationSettings.Permission.get_current_time")
             allow_logging_access = self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog")
             if allow_time_access == True and allow_logging_access == True:
                 self.bus.publish("Req_UserActivityLog")
@@ -226,7 +225,10 @@ class myapp():
 
     #入力の際の場合分け
     def Check_responseMode(self,input_dict,  debug=-1):
-        if self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog"):
+        react_response= self.setting.get_setting_value("ApplicationSettings.Permission.ReAct_response")
+        rag_response = self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog")
+        
+        if react_response == False and rag_response == True:
             self.bus.publish("Response_RAGisON")
         else:
             self.bus.publish("Response_RAGisOFF")
@@ -235,12 +237,12 @@ class myapp():
     def SendMessage_toAI(self, text, debug = -1):
         #会話送信テキストの準備と送信
         t, w, m = "", "", ""
-        if self.setting.get_setting_value("ApplicationSettings.Permission.CurrentTime") == True:
+        if self.setting.get_setting_value("ApplicationSettings.Permission.get_current_time") == True:
             t = "\n現在時刻：" + self.WinInfo.get_datetime()
-        if self.setting.get_setting_value("ApplicationSettings.Permission.ActiveWindow") == True:
+        if self.setting.get_setting_value("ApplicationSettings.Permission.get_active_window") == True:
             w = "\nアクティブなウィンドウ：" + self.WinInfo.get_activate_window()
-        if self.setting.get_setting_value("ApplicationSettings.Permission.PlayingMedia") == True:
-            m = "\n再生中のメディア：" + self.WinInfo.get_plaing_media(debug = debug + 1 if debug >= 0 else -1) 
+        if self.setting.get_setting_value("ApplicationSettings.Permission.get_playing_media") == True:
+            m = "\n再生中のメディア：" + self.WinInfo.get_plaing_media()
         send_text = text + t + w + m
         self.bus.publish("MessageInput", {"role": "user", "parts":[send_text]}, debug=debug)
 
@@ -254,13 +256,7 @@ def start_app(engine_process = None, TalkHistory = [], debug = -1):
     app = myapp(engine_process=engine_process, TalkHistory=TalkHistory, debug=debug)
     app.ui.mainloop()
 
-def get_CharacterFolders(debug=-1):
-    files = os.listdir("立ち絵")
-    if debug >= 0:
-        indent = "  " * debug
-        print(f"{indent}UI.py get_CharacterFolders() called.")
-        print(f"{indent}loaded files = {files}")
-    return files
+
 
 
 

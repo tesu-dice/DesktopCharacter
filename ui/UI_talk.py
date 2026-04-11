@@ -75,9 +75,6 @@ class TalkWindow(tk.Toplevel):
         """
 
         message = self.input_text.get()
-        if self.setting.get_setting_value("ApplicationSettings.Permission.CurrentTime") == True:
-            t = "\n現在時刻：" + get_datetime()
-            message += t
         _new_talkhistory = {"role": "user", "parts":[message]}
         if message:
             # EventBusで送信ボタンが押されたことを報告

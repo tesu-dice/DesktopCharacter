@@ -15,11 +15,11 @@ logger = logging.getLogger(__name__)
 # プログラム同士のインポート（これらは外部ファイルとして存在し、設定UIから利用される）
 from services import config_controller # 設定ファイルの読み書きや、設定値の管理を行うモジュール
 from services.Event_Bus import EventBus
+from services.utils import get_CharacterFolders # mainモジュールからget_CharacterFoldersをインポート
 from ai import AI_geminiAPI
 from ai import AI_ollama
 from ui import TTS_VoiceVoxEngine # VoiceVoxエンジンのスピーカーリストなどを取得するために使用
 from ui import TTS_WindowsNarratorManager # Windowsナレーターの音声モデルなどを取得するために使用
-from main import get_CharacterFolders # mainモジュールからget_CharacterFoldersをインポート
 
 class Tooltip:
     """

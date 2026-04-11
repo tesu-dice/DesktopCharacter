@@ -1,5 +1,7 @@
 #git ignore file
 **__pycache__**
+**.venv**
+**.vscode**
 **立ち絵**
 **diary**
 **tests**
