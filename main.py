@@ -16,7 +16,6 @@ from services import UserDataLogger
 from services import Event_Bus
 from ui import UI_main
 from ai import AI_main
-from ai_tools.tools_main import ToolExecutor
 from services.release_check import check_nowver_is_newestver
 from services.WindowsInfoCollecter import get_datetime
 from ui.TTS_VoiceVoxEngine import start_server
@@ -65,7 +64,6 @@ class myapp():
         self.UserDataLoger = UserDataLogger.UserActivityManager(self.bus, dir = basedir)
         self.AI_Manager = AI_main.AI_Manager(self.bus, self.setting, TalkHistory, debug=debug)
         self.ui = UI_main.UI(self.bus, self.setting, debug=debug)
-        self.ai_tools = ToolExecutor(self.bus, self.setting, debug=debug)
         #イベントバスへの購読設定
         self._setup_event_listeners()
         
@@ -214,7 +212,7 @@ class myapp():
             print("5分に一回の処理です。")
             self.mm_last = mm_now
             #ユーザアクティビティログの要求（時刻とログの許可がある場合）
-            allow_time_access = self.setting.get_setting_value("ApplicationSettings.Permission.CurrentTime")
+            allow_time_access = self.setting.get_setting_value("ApplicationSettings.Permission.get_current_time")
             allow_logging_access = self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog")
             if allow_time_access == True and allow_logging_access == True:
                 self.bus.publish("Req_UserActivityLog")
@@ -227,7 +225,10 @@ class myapp():
 
     #入力の際の場合分け
     def Check_responseMode(self,input_dict,  debug=-1):
-        if self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog"):
+        react_response= self.setting.get_setting_value("ApplicationSettings.Permission.ReAct_response")
+        rag_response = self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog")
+        
+        if react_response == False and rag_response == True:
             self.bus.publish("Response_RAGisON")
         else:
             self.bus.publish("Response_RAGisOFF")
@@ -236,12 +237,12 @@ class myapp():
     def SendMessage_toAI(self, text, debug = -1):
         #会話送信テキストの準備と送信
         t, w, m = "", "", ""
-        if self.setting.get_setting_value("ApplicationSettings.Permission.CurrentTime") == True:
+        if self.setting.get_setting_value("ApplicationSettings.Permission.get_current_time") == True:
             t = "\n現在時刻：" + self.WinInfo.get_datetime()
-        if self.setting.get_setting_value("ApplicationSettings.Permission.ActiveWindow") == True:
+        if self.setting.get_setting_value("ApplicationSettings.Permission.get_active_window") == True:
             w = "\nアクティブなウィンドウ：" + self.WinInfo.get_activate_window()
-        if self.setting.get_setting_value("ApplicationSettings.Permission.PlayingMedia") == True:
-            m = "\n再生中のメディア：" + self.WinInfo.get_plaing_media() 
+        if self.setting.get_setting_value("ApplicationSettings.Permission.get_playing_media") == True:
+            m = "\n再生中のメディア：" + self.WinInfo.get_plaing_media()
         send_text = text + t + w + m
         self.bus.publish("MessageInput", {"role": "user", "parts":[send_text]}, debug=debug)
 

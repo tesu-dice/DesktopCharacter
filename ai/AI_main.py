@@ -152,12 +152,10 @@ class AI_Manager():
 
         
         #react動作を行う場合
-        react_planing_is = self.setting.get_setting_value("パス未設定")
-        if True:
-            react_resopnse = self.react_planing(debug= 1 )
-            character_response = self.character_response(base_dict=react_resopnse, debug=1)
-            print(f"react_resposne:\n{react_resopnse}")
-            print(f"chara_response:\n{character_response}")
+        react_planing_is_on = self.setting.get_setting_value("ApplicationSettings.Permission.ReAct_response")
+        if react_planing_is_on:
+            react_resopnse = self.react_planing()
+            character_response = self.character_response(base_dict=react_resopnse)
             total_token_count = react_resopnse["token_count"] + character_response["token_count"]
 
             result = {"role": "model", "parts": character_response["parts"], "token_count": total_token_count}
@@ -176,12 +174,12 @@ class AI_Manager():
             self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
 
     # react動作によって情報収集や方針決めを行う-> dict
-    def react_planing(self,  max_react_steps: int = 5, debug: int = -1):
+    def react_planing(self,  max_react_steps: int = 10, debug: int = -1):
         if self.AI_client is None:
             self.bus.publish("AIGenerateMessage", {"role": "model", "parts": ["AIサービス未選択"], "token_count": 0})
             return
 
-        def log_debug(message, level=0):
+        def log_debug(message, level=-1):
             if debug > -1:
                 print(f"{'  ' * level}{message}")
 
@@ -238,7 +236,7 @@ class AI_Manager():
             total_token_count += resp["token_count"]
             react_history.append({"role": "model", "parts": [thought_text]})
             log_debug(f"Thought prompt:\n {thought_content}", level=debug)
-            log_debug(f"Thought response:\n {thought_text}", level=debug)
+            log_debug(f"Thought response:\n {thought_text}", level=1)
 
             # Action
             # JSON形式（{ ... }）が含まれているか正規表現で検索
@@ -292,7 +290,6 @@ class AI_Manager():
 
     # base_dictの文章をキャラクター設定に沿った文章に変更して返す
     def character_response(self, base_dict : dict, debug: int = -1):
-        debug = 1
         if debug != -1:
             indent = "  " * debug
             print(f"{indent}AI_main.py character_response() called.")
@@ -315,7 +312,6 @@ class AI_Manager():
                                 f"# 応答方針\n"+
                                 f"{base_dict['parts']}"
                                 )
-        print(f"{indent}character_base_prompt:\n{character_base_prompt}")
         response = self.AI_client.response(input_contents=[{"role": "user", "parts": [character_base_prompt]}], debug=debug)
         result = {"role": "model", "parts": [response["text"]], "token_count": response["token_count"]}
         return result 

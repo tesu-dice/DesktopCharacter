@@ -349,23 +349,35 @@ def get_default_data() -> Dict[str, Any]:
                     }
                 },
                 "Permission": {
-                    "name": "アプリでの利用を許可する項目",
+                    "name": "アプリとAIの機能（情報アクセス許可）に関する設定項目",
                     "type": "section",
                     "children": {
-                        "CurrentTime":{
+                        "ReAct_response":{
+                            "name" :"ReAct式の応答生成",
+                            "description": "応答を生成するときに何度か繰り返し考えてから返事をします。AIサービスの利用量が増えます。",
+                            "type": "bool",
+                            "value": True
+                        },
+                        "get_current_time":{
                             "name": "現在時刻",
                             "type": "bool",
                             "value": True
                         },
-                        "ActiveWindow": {
+                        "get_active_window": {
                             "name": "作業中のウィンドウ",
                             "description": "アクティブなウィンドウのソフト名、ウィンドウ名を取得・利用します",
                             "type": "bool",
                             "value": True
                         },
-                        "PlayingMedia": {
+                        "get_playing_media": {
                             "name": "再生中のメディア",
                             "description": "再生中のメディアのタイトルを取得・利用します。",
+                            "type": "bool",
+                            "value": True
+                        },
+                        "get_user_activity_summary": {
+                            "name": "ユーザログの活用",
+                            "description": "アプリケーション利用中に収集したユーザ情報のログを利用します。",
                             "type": "bool",
                             "value": True
                         },
@@ -375,6 +387,7 @@ def get_default_data() -> Dict[str, Any]:
                             "type": "bool",
                             "value": True
                         }
+                        
                     }
                 }
             }
