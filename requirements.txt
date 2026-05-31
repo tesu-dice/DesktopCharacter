@@ -6,3 +6,5 @@ simpleaudio
 Pillow
 google-generativeai
 google-api-core
+SpeechRecognition # services/speech2text.py 音声入力で利用
+pyaudio # SpeechRecognitionがマイク入力を取得する際に必要

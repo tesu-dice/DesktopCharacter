@@ -1,19 +1,16 @@
-
 """
 いろいろなプログラムの起動と管理を行うメインプログラム
 """
 #ライブラリ
 import os
 import sys
-import subprocess
-import threading
 import logging
-import time
 #プログラム
 from services import WindowsInfoCollecter
 from services.config_controller import UserSettings, read_configfile
 from services import UserDataLogger
 from services import Event_Bus
+from services import speech2text
 from ui import UI_main
 from ai import AI_main
 from services.release_check import check_nowver_is_newestver
@@ -28,9 +25,9 @@ from ui.TTS_VoiceVoxEngine import start_server
 PyInstallerなどでコンパイルされた場合にも対応できる書き方。
 """
 if getattr(sys, 'frozen', False):
-    basedir = os.path.dirname(sys.executable)
+    app_dir = os.path.dirname(sys.executable)
 else:
-    basedir = os.path.dirname(os.path.abspath(__file__))
+    app_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 
@@ -39,6 +36,7 @@ class myapp():
         #初期化
         _setup_logging_info()
         self.engine_process = engine_process
+        self.app_dir = app_dir
         _start_info_texts ="" # 起動メッセージ用テキスト
         _start_info_error ="" # 起動エラーメッセージ用テキスト
         
@@ -61,9 +59,10 @@ class myapp():
         self.bus = Event_Bus.EventBus()
             #各種サービス要素
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.bus, self.setting, debug=debug)
-        self.UserDataLoger = UserDataLogger.UserActivityManager(self.bus, dir = basedir)
+        self.UserDataLoger = UserDataLogger.UserActivityManager(self.bus, dir = app_dir)
         self.AI_Manager = AI_main.AI_Manager(self.bus, self.setting, TalkHistory, debug=debug)
         self.ui = UI_main.UI(self.bus, self.setting, debug=debug)
+        self.S2T = speech2text.speech2text_manager(self.bus, self.setting, debug=debug)
         #イベントバスへの購読設定
         self._setup_event_listeners()
         
@@ -273,7 +272,7 @@ def _setup_logging_info():
     """
     
     #ログの基本設定
-    log_filepath = os.path.join(basedir, 'application.log')# ログファイルのフルパスを安全に作成
+    log_filepath = os.path.join(app_dir, 'application.log')# ログファイルのフルパスを安全に作成
     # 1. ルートロガーを取得
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.INFO)  # アプリケーション全体の基本レベル
