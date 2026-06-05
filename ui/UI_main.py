@@ -205,7 +205,7 @@ class UI(tk.Tk):
     def _handle_character_click(self):
         """キャラクタークリック時の処理"""
         if self.talk_window and self.talk_window.winfo_exists() and self.talk_window.winfo_ismapped():
-             self.talk_window.add_log("システム: キャラクターがクリックされました！")
+            self.talk_window.add_log("システム: キャラクターがクリックされました！")
 
     def update_character_image(self, image_name):
         """キャラクターの表示画像を更新します。"""

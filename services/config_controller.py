@@ -1,10 +1,16 @@
 import json
 import os
+import sys
 from typing import Any, Dict, List, Optional
 import logging
 logger = logging.getLogger(__name__)
 from pathlib import Path
-APP_DIR = Path(__file__).resolve().parent.parent
+
+# フリーズ時(exe実行)はexeファイルの隣、開発時はプロジェクトルートを指す
+if getattr(sys, 'frozen', False):
+    APP_DIR = Path(sys.executable).parent
+else:
+    APP_DIR = Path(__file__).resolve().parent.parent
 
 print(f"APP_DIR = {APP_DIR}")
 
@@ -178,12 +184,6 @@ class UserSettings:
             if not isinstance(new_value, int):
                 print(f"警告: '{path}' の値 '{new_value}' は整数ではありません。")
                 return False
-            if "min" in item.value_range and new_value < item.value_range["min"]:
-                print(f"警告: '{path}' の値 {new_value} は最小値 {item.value_range['min']} 未満です。")
-                return False
-            if "max" in item.value_range and new_value > item.value_range["max"]:
-                print(f"警告: '{path}' の値 {new_value} は最大値 {item.value_range['max']} を超えています。")
-                return False        
             if "min" in item.value_range and new_value < item.value_range["min"]:
                 print(f"警告: '{path}' の値 {new_value} は最小値 {item.value_range['min']} 未満です。")
                 return False
@@ -483,7 +483,7 @@ def get_default_data() -> Dict[str, Any]:
                     "type": "int",
                     "min": 0,
                     "max": 100,
-                    "value": "70"
+                    "value": 70
                 }
             }
         },

@@ -56,9 +56,14 @@ class ToolExecutor:
 
     def _discover_tools(self) -> Dict[str, BaseTool]:
         """AI_Toolsディレクトリからツールクラスを動的にインポートしてインスタンス化する。"""
+        import sys
         tools = {}
-        tools_dir = os.path.dirname(__file__)
-        
+        # フリーズ時はPyInstallerがdatasとして展開したパスを使う
+        if getattr(sys, 'frozen', False):
+            tools_dir = os.path.join(sys._MEIPASS, 'ai_tools')
+        else:
+            tools_dir = os.path.dirname(__file__)
+
         print(f"   tools directory ={tools_dir}")
 
         for filename in os.listdir(tools_dir):
