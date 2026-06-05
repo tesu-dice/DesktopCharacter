@@ -190,6 +190,7 @@ class speech2text_manager():
         # on_settings_updated() でリセットして再構築する。
         self._mic = None
         self._target_energy = None
+        self._is_processing = False  # 二重検出防止フラグ
 
         # 設定更新イベントを購読
         self.bus.subscribe("SettingsUpdated", self.on_settings_updated)
@@ -265,6 +266,11 @@ class speech2text_manager():
             while self.is_running:
                 # Windowsのメッセージキューを処理してSAPIイベントを発火
                 pythoncom.PumpWaitingMessages()
+                # speech2text 完了後のフラグリセット。
+                # PumpWaitingMessages() が返ってからリセットすることで、
+                # 同一ポンプ内に積まれていた二重検出イベントを確実にスキップできる。
+                if self._is_processing:
+                    self._is_processing = False
                 time.sleep(0.1)
         except Exception as e:
             logger.error(f"SpeechToText Loop Error: {e}")
@@ -273,14 +279,24 @@ class speech2text_manager():
             pythoncom.CoUninitialize()
 
     def _on_wakeup_detected(self, detected_text: str, confidence):
-        """SapiEvents から呼ばれる。ウェイクワード検出後、本文を1回取りに行く。"""
-        if self.debug >0 :
+        """SapiEvents から呼ばれる。ウェイクワード検出後、本文を1回取りに行く。
+        _is_processing フラグが立っている間は二重実行をスキップする。
+        フラグのリセットは呼び出し元の loop_wakeup_waiting で行う。"""
+        if self._is_processing:
+            logger.info(f"ウェイクワード検出をスキップ: 処理中 ('{detected_text}' conf={confidence})")
+            return
+        self._is_processing = True
+        if self.debug > 0:
             print("ウェイクアップワードを検出しました。")
         logger.info(f"ウェイクワード検出: '{detected_text}' (conf={confidence})")
         print("ウェイクアップワードを検出しました。")
         text = self.speech2text()
         if text:
             self.input_text(text)
+        # フラグのリセットはここで行わない。
+        # PumpWaitingMessages() は同一呼び出し内でキューに積まれたイベントも処理するため、
+        # この関数が返った直後に2回目のイベントが発火する可能性がある。
+        # フラグを True のまま返し、PumpWaitingMessages() が戻った後のメインループでリセットする。
 
     def speech2text(self) -> str:
         """googleRecognizerで一回だけ文字起こしして文字列を返す。
