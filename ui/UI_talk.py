@@ -92,7 +92,10 @@ class TalkWindow(tk.Toplevel):
             #メタデータ表示ONならトークン数を表示
             if self.setting.get_setting_value("ApplicationSettings.ShowMetadatas") == True:
                 message += "利用したトークン数：" + str(talkhistory["token_count"])+ "\n"
+        else:
+            message = f"[ その他 ]\n{message}\n"
         message += "\n"
+
 
         if message:
             self.message_text.configure(state="normal")
