@@ -58,6 +58,8 @@ class ToolExecutor:
         """AI_Toolsディレクトリからツールクラスを動的にインポートしてインスタンス化する。"""
         tools = {}
         tools_dir = os.path.dirname(__file__)
+        
+        print(f"   tools directory ={tools_dir}")
 
         for filename in os.listdir(tools_dir):
             # Pythonファイルで、特殊なファイルや自分自身を除外

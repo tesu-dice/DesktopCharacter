@@ -1,8 +1,12 @@
 import json
 import os
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 import logging
 logger = logging.getLogger(__name__)
+from pathlib import Path
+APP_DIR = Path(__file__).resolve().parent.parent
+
+print(f"APP_DIR = {APP_DIR}")
 
 
 class SettingItem:
@@ -174,6 +178,12 @@ class UserSettings:
             if not isinstance(new_value, int):
                 print(f"警告: '{path}' の値 '{new_value}' は整数ではありません。")
                 return False
+            if "min" in item.value_range and new_value < item.value_range["min"]:
+                print(f"警告: '{path}' の値 {new_value} は最小値 {item.value_range['min']} 未満です。")
+                return False
+            if "max" in item.value_range and new_value > item.value_range["max"]:
+                print(f"警告: '{path}' の値 {new_value} は最大値 {item.value_range['max']} を超えています。")
+                return False        
             if "min" in item.value_range and new_value < item.value_range["min"]:
                 print(f"警告: '{path}' の値 {new_value} は最小値 {item.value_range['min']} 未満です。")
                 return False
@@ -451,9 +461,34 @@ def get_default_data() -> Dict[str, Any]:
                 }
             }
         },
-
+        "Speech2TextSettings" :{
+            "name": "音声入力設定",
+            "type": "section",
+            "children": {
+                "on/off":{
+                    "name" : "音声入力のon/off" ,
+                    "description": "ウェイクアップワードを検出したときに一時的に音声入力を使います。",
+                    "type": "bool",
+                    "value": True
+                },
+                "wakeupword": {
+                    "name": "ウェイクアップワード",
+                    "description": "音声認識を開始するときの合言葉を設定します。",
+                    "type": "str",
+                    "value": "もしもし"
+                },
+                "threshold": {
+                    "name": "ウェイクアップワードのしきい値",
+                    "description": "合言葉検出の際の判定をどの程度厳しくするかです。数値が大きいほど正確な発音が必要になります。",
+                    "type": "int",
+                    "min": 0,
+                    "max": 100,
+                    "value": "70"
+                }
+            }
+        },
         "VoiceSettings": {
-            "name": "音声設定",
+            "name": "読み上げ音声設定",
             "type": "section",
             "children": {
                 "engine": {
@@ -508,6 +543,7 @@ def get_default_data() -> Dict[str, Any]:
             }
         }
     }
+
     return default_config
 
 

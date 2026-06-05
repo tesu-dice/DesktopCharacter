@@ -27,6 +27,7 @@ True/Falseで接続、strで詳細なメッセージを返す。
 
 """
 import os
+import sys
 import re
 import json
 import threading
@@ -37,9 +38,14 @@ logger = logging.getLogger(__name__)
 from ai import AI_geminiAPI
 from ai import AI_ollama
 from services.Event_Bus import EventBus
-from services.config_controller import UserSettings
+from services.config_controller import UserSettings, APP_DIR
 from ai_tools.tools_main import ToolExecutor
 
+#パス取得
+"""
+実行中のスクリプトが存在するディレクトリの絶対パスを取得する。
+PyInstallerなどでコンパイルされた場合にも対応できる書き方。
+"""
 
 class AI_Manager():
     def __init__(self, bus: EventBus, setting: UserSettings, TalkHistory=[], debug=-1):
@@ -90,7 +96,7 @@ class AI_Manager():
         #立ち絵ファイル名を追記
         self.character_img_list = self.load_imgs(dir_name=self.setting.get_setting_value("ApplicationSettings.CharacterImage.Folder"))
         base_prompt += f"# 立ち絵ファイル名\n{self.character_img_list}\n#キャラクター設定\n"
-        f= open("Character_setting.txt", encoding="utf-8")
+        f= open(f"{APP_DIR}\Character_setting.txt", encoding="utf-8")
         self.Character_set_text=""
         for line in f:
             line.strip("\n")

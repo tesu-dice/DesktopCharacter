@@ -10,15 +10,21 @@ class charaimg_controller
 """
 #一般ライブラリ
 import os
+import sys
 from PIL import Image, ImageTk  # 画像表示のため
 import tkinter as tk
 import random
 from PIL.Image import FLIP_LEFT_RIGHT 
 #プログラムのインポート
-from services.config_controller import UserSettings
+from services.config_controller import UserSettings, APP_DIR
 from services.WindowsInfoCollecter import get_TotalMonitorSize
 from services.Event_Bus import EventBus
 
+#パス取得
+"""
+実行中のスクリプトが存在するディレクトリの絶対パスを取得する。
+PyInstallerなどでコンパイルされた場合にも対応できる書き方。
+"""
 
 
 #キャラクター画像を管理するクラス
@@ -35,7 +41,7 @@ class charaimg_controller():
         
     #キャラクター画像の読み取り
     def load_imgs(self):
-        dir_path = f"立ち絵/{self.setting.get_setting_value('ApplicationSettings.CharacterImage.Folder')}/"
+        dir_path = f"{APP_DIR}/立ち絵/{self.setting.get_setting_value('ApplicationSettings.CharacterImage.Folder')}/"
         try :
             files = os.listdir(dir_path)
         except:
