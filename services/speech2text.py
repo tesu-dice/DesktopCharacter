@@ -200,7 +200,7 @@ class speech2text_manager():
         #読み取り
         self.is_running = self.setting.get_setting_value("Speech2TextSettings.on/off")
         self.wakeup_word = self.setting.get_setting_value("Speech2TextSettings.wakeupword")
-        self.threshold = 0.01 * self.setting.get_setting_value("Speech2TextSettings.threshold")
+        self.threshold = 0.01 * float(self.setting.get_setting_value("Speech2TextSettings.threshold"))
         self._mic_device_index = 0 #self.setting.get_setting_value("") #いったんシステム準拠のマイクを利用
         
         #各値のエラーハンドリング
@@ -288,8 +288,9 @@ class speech2text_manager():
         self._is_processing = True
         if self.debug > 0:
             print("ウェイクアップワードを検出しました。")
-        logger.info(f"ウェイクワード検出: '{detected_text}' (conf={confidence})")
-        print("ウェイクアップワードを検出しました。")
+        message = f"ウェイクワード検出: '{detected_text}' (conf={confidence})"
+        logger.info(message)
+        self.bus.publish("Req_UIMessage", {"role" : "system", "parts" : [message]})
         text = self.speech2text()
         if text:
             self.input_text(text)

@@ -80,8 +80,9 @@ class myapp():
         self.bus.subscribe("application start", self.ui.start_TTS_Server)
         self.bus.subscribe("Start_TTS_Server", self.app_start_message)
 
-        #アプリからユーザへのポップアップメッセージ
+        #アプリUI用の整理
         self.bus.subscribe("Req_PopUpMessage", self.ui.show_message_box)
+        self.bus.subscribe("Req_UIMessage", self.ui.talk_window.add_log)
 
 
 
