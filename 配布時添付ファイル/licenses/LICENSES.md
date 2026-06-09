@@ -33,3 +33,11 @@ This document lists the third-party Python libraries used in this project and th
 ## google-api-core
 *   **License**: Apache License 2.0
 *   **Reference**: https://pypi.org/project/google-api-core/
+
+## SpeechRecognition
+*   **License**: BSD License
+*   **Reference**: https://pypi.org/project/SpeechRecognition/
+
+## PyAudio
+*   **License**: MIT License
+*   **Reference**: https://pypi.org/project/PyAudio/
