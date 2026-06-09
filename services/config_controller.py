@@ -13,6 +13,8 @@ else:
     APP_DIR = Path(__file__).resolve().parent.parent
 
 print(f"APP_DIR = {APP_DIR}")
+logger.info(f"アプリケーションのルートパス = {APP_DIR}")
+
 
 
 class SettingItem:
@@ -259,20 +261,21 @@ def read_configfile(filepath: str = "config.json") -> UserSettings:
     settings.load_from_dict(default_data) # まずデフォルトデータをロード
 
     #設定ファイルを参照して値を変更
+    config_path = APP_DIR / filepath
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(config_path, "r", encoding="utf-8") as f:
             config_file_data = json.load(f)
-        
+
         # config.json の内容を既存の設定にマージする
         # recursive_update_settingsのようなヘルパー関数を使用して、config_file_dataをsettingsに適用する
         settings._populate_settings_map_with_merge(config_file_data, [])
 
     except FileNotFoundError:
-        logger.info(f"設定ファイル{filepath}が見つかりません。デフォルト設定を使用します。")
+        logger.info(f"設定ファイル{config_path}が見つかりません。デフォルト設定を使用します。")
     except json.JSONDecodeError as e:
-        logger.error(f"エラー: '{filepath}' から JSON をデコードできませんでした。{e}。デフォルト設定を使用します。")
+        logger.error(f"エラー: '{config_path}' から JSON をデコードできませんでした。{e}。デフォルト設定を使用します。")
     except Exception as e:
-        logger.error(f"エラー: '{filepath}' の読み込み中に予期しないエラーが発生しました。{e}。デフォルト設定を使用します。")
+        logger.error(f"エラー: '{config_path}' の読み込み中に予期しないエラーが発生しました。{e}。デフォルト設定を使用します。")
     return settings
 
 
@@ -280,13 +283,14 @@ def write_configfile(usersettings: UserSettings, filepath: str = "config.json"):
     """
     UserSettings インスタンスから現在の設定を JSON ファイルに書き込みます。
     """
+    config_path = APP_DIR / filepath
     try:
         data_to_save = usersettings.to_dict_for_save_simple()
-        with open(filepath, "w", encoding="utf-8") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             json.dump(data_to_save, f, ensure_ascii=False, indent=2) # indent=2 で整形
-        print(f"情報: 設定が '{filepath}' に正常に書き込まれました。")
+        print(f"情報: 設定が '{config_path}' に正常に書き込まれました。")
     except Exception as e:
-        print(f"エラー: '{filepath}' への書き込み中に予期しないエラーが発生しました。{e}")
+        print(f"エラー: '{config_path}' への書き込み中に予期しないエラーが発生しました。{e}")
 
 
 def get_default_data() -> Dict[str, Any]:
