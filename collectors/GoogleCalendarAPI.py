@@ -23,7 +23,9 @@ class GoogleScheduleControl:
     def __init__(self):
         creds = None
         if os.path.exists(OAUTH_TOKEN_FILE):
-            creds = Credentials.from_authorized_user_file(OAUTH_TOKEN_FILE, SCOPES)
+            #トークンファイルがあれば参照
+            #creds = Credentials.from_authorized_user_file(OAUTH_TOKEN_FILE, SCOPES)
+            print("トークンファイルを探さずに処理を行います。")
 
         if not creds or not creds.valid:
             if creds and creds.expired and creds.refresh_token:
@@ -156,9 +158,9 @@ class GoogleScheduleControl:
 def main():
     try:
         gcal = GoogleScheduleControl()
-        start_date = datetime.date(2026, 4, 1)
+        start_date = datetime.date(2026, 5, 1)
         
-        end_date = datetime.date(2026, 5, 1)
+        end_date = datetime.date(2026, 6, 9)
 
         current_date = start_date
         while current_date <= end_date:
