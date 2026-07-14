@@ -86,15 +86,11 @@ class myapp():
 
 
 
-        #会話用の入力からの流れ(RAG機能OFFなら途中飛ばす。)
-        self.bus.subscribe("MessageInput", self.ui.talk_window.add_log)#入力文字のUI表示
-        self.bus.subscribe("MessageInput", self.Check_responseMode)#RAGのON/OFFの確認
-        self.bus.subscribe_when(["MessageInput","Response_RAGisOFF"], self.AI_Manager.response)#RAGがOFFの際のテキスト生成
-        self.bus.subscribe_when(["MessageInput","Response_RAGisON"], self.AI_Manager.make_rag_request)#RAG参照用のリクエスト生成
-        self.bus.subscribe("Req_RAGInfo", self.UserDataLoger.handle_rag_request)#RAG情報の参照可能か確認してデータの準備や完了通知の指示
-        self.bus.subscribe_when(["MessageInput","RAGisReady"], self.AI_Manager.response_withRAG)#RAGがONの際のテキスト生成
-        self.bus.subscribe("AIGenerateMessage", self.ui.talk_window.add_log)#会話テキストの生成を受けてUIに表示、RAGのON/OFFに関わらずここで合流。
-        self.bus.subscribe("AIGenerateMessage", self.ui.Reflect_Text) #TTSと立ち絵へ反映
+        #会話用の入力からの流れ
+        self.bus.subscribe("MessageInput", self.ui.talk_window.add_log)
+        self.bus.subscribe("MessageInput", self.handle_user_message)
+        self.bus.subscribe("OnUserResponse", self.ui.talk_window.add_log)
+        self.bus.subscribe("OnUserResponse", self.ui.Reflect_Text)
 
         
         #ユーザデータの記録
@@ -104,8 +100,8 @@ class myapp():
         self.bus.subscribe_workflow("Req_UserActivityLog", handler=self.WinInfo.get_datetime, response_event="Req_UserActivityLog_time")
         self.bus.subscribe_when(["Req_UserActivityLog_time","Req_UserActivityLog_win", "Req_UserActivityLog_media"], self.UserDataLoger.add_userlog)
             #一時間毎, 一日毎の要約作成
-        self.bus.subscribe_workflow("Req_UserSummaryLog_context", handler=self.AI_Manager.response_onetime, response_event="Req_UserSummaryLog_response")
-        self.bus.subscribe_when(["Req_UserSummaryLog_TimeAndScope", "Req_UserSummaryLog_response"], self.UserDataLoger.add_summary_log)
+        self.bus.subscribe("Req_UserSummaryLog", self.handle_summary_request)
+        self.bus.subscribe("OnSummaryDone", self.UserDataLoger.add_summary_log)
 
         #アプリケーションの終了
         self.bus.subscribe("Req_ExitApp", self.exit)
@@ -134,6 +130,7 @@ class myapp():
             print(f"お使いのバージョンは最新です。 最新バージョン: {_result[1]}, 現在のバージョン: {_result[2]}")
         _start_info_texts += f"---バージョン情報---\n{'最新です。' if _result[0] else '更新があります。'} [{_result[2]}] -> [{_result[1]}]\n\n"
         
+
 
 
         #AIサービスとの接続確認
@@ -223,15 +220,24 @@ class myapp():
         #繰り返し処理
         self.update_id = self.ui.after(10*1000, self.update, debug)
 
-    #入力の際の場合分け
-    def Check_responseMode(self,input_dict,  debug=-1):
-        react_response= self.setting.get_setting_value("ApplicationSettings.Permission.ReAct_response")
-        rag_response = self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog")
-        
-        if react_response == False and rag_response == True:
-            self.bus.publish("Response_RAGisON")
-        else:
-            self.bus.publish("Response_RAGisOFF")
+    def handle_user_message(self, input_dict, debug=-1):
+        self.AI_Manager.req_LLM(
+            payload=input_dict,
+            response_event="OnUserResponse",
+            debug=debug
+        )
+
+    def handle_summary_request(self, data_str, scope, time_str, reply_to="", debug=-1):
+        self.AI_Manager.req_LLM(
+            payload={
+                "data":     data_str,
+                "scope":    scope,
+                "time":     time_str,
+                "reply_to": reply_to
+            },
+            response_event="OnSummaryDone",
+            debug=debug
+        )
 
     #入力テキストをAIに伝える
     def SendMessage_toAI(self, text, debug = -1):
