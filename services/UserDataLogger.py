@@ -153,6 +153,15 @@ class UserActivityManager:
         # 毎時55分 -> 時間要約(11時台は作成しない)
         elif  minute == "55":
             self.request_summary(scope="hour", target_time=time_str)
+    #ログリストをMarkdownテーブル形式に変換する
+    def _to_markdown_table(self, logs: list, columns: list) -> str:
+        def escape(s):
+            return str(s).replace("|", "｜")
+        header = "| " + " | ".join(columns) + " |"
+        separator = "|" + "|".join(["---"] * len(columns)) + "|"
+        rows = ["| " + " | ".join(escape(log.get(col, "")) for col in columns) + " |" for log in logs]
+        return "\n".join([header, separator] + rows)
+
     #時間毎、一日毎のログ用のリクエストを作成
     def request_summary(self, scope: str, target_time: str, reply_to =""):
         """
@@ -164,70 +173,41 @@ class UserActivityManager:
         #すでにログがあるかどうかの確認
         if self.check_log_existence(target_time, scope)[0] == True:
             return
-        
-        logs_to_process = []
-        prompt_prefix = ""
 
         if scope == "hour":
-            # 時間帯(HH)の抽出
             target_hour = target_time.split(" ")[1].split(":")[0]
-            # ログ抽出フィルタ
-            logs_to_process = [
+            logs = [
                 log for log in data["logs"]
                 if log["time"].split(" ")[1].startswith(f"{target_hour}:")
             ]
-            prompt_prefix = "次のユーザの1時間のアクティビティを短く要約してください。"
-            #参照できるログ情報がない場合
-            if not logs_to_process:
+            if not logs:
                 print(f"{target_hour}時台のログはありません。")
-                self.add_summary_log(target_time, scope=scope, reply_to="", text= f"{target_hour}時台のログはありませんでした。")
+                self.add_summary_log(target_time, scope=scope, reply_to="", text=f"{target_hour}時台のログはありませんでした。")
                 return
+            llm_input = self._to_markdown_table(logs, ["time", "window", "media"])
 
         elif scope == "day":
-            # 1. 既存のhourlogsを取得
-            hour_summaries = data.get("hourlogs", [])#各時刻の要約ログの辞書のリストを取得
-            summarized_hours = {log['time'].split(' ')[1] for log in hour_summaries} # "HH"形式のセット
-
-            # 2. hourlogsが存在しない時間帯の生ログを取得
-            unsummarized_logs = [#時刻の文字列"HH"だけ取ってsummarized_hoursと一致しない場合は追加。
+            hour_summaries = data.get("hourlogs", [])
+            summarized_hours = {log['time'].split(' ')[1] for log in hour_summaries}
+            unsummarized_logs = [
                 log for log in data.get("logs", [])
                 if log['time'].split(' ')[1].split(':')[0] not in summarized_hours
             ]
-
-            # 3. プロンプトの作成
-            prompt_prefix = (
-                "以下はユーザーの1日の活動記録です。\n"
-                "'hour_summaries'には時間ごとの要約が、'unsummarized_raw_logs'にはまだ要約されていない時間帯の生ログが含まれています。\n"
-                "これらすべてを考慮して、1日の活動全体を3つ程度の主要な出来事にまとめてください。"
-            )
-            
-            # 処理対象のログがない場合は終了
             if not hour_summaries and not unsummarized_logs:
                 print("本日のログはありません。")
                 self.add_summary_log(target_time, scope=scope, reply_to="", text=f"{target_time.split(' ')[0]}のログはありませんでした。")
                 return
+            date_str = target_time.split(" ")[0]
+            hour_table = self._to_markdown_table(hour_summaries, ["time", "summary"])
+            unsummarized_table = self._to_markdown_table(unsummarized_logs, ["time", "window", "media"])
+            llm_input = f"# {date_str} の活動ログ\n\n## 時間サマリー\n{hour_table}\n\n## 未集計ログ\n{unsummarized_table}"
 
-            # LLMに渡すペイロードを作成
-            logs_to_process = {
-                "hour_summaries": hour_summaries,
-                "unsummarized_raw_logs": unsummarized_logs
-            }
-        
-        # 共通の送信処理
-        llm_input_json = json.dumps(logs_to_process, indent=2, ensure_ascii=False)
-        request_text = f"{prompt_prefix}\n{llm_input_json}"
-        
-        # EventBusへ送信（コンテキストとしてログデータを渡す）
-        # ※受け取り側で time などのメタデータが必要なら、辞書形式で渡すのがベターです
-        payload = {
-            "time": target_time,
-            "text": request_text,
-            "scope": scope
-        }
-        # 今回は元の文字列送信に合わせています
-        self.bus.publish("Req_UserSummaryLog_context", request_text)
-        self.bus.publish("Req_UserSummaryLog_TimeAndScope", target_time, scope, reply_to)
+        else:
+            return
+
+        self.bus.publish("Req_UserSummaryLog", llm_input, scope, target_time, reply_to)
         print(f"[{scope}] 要約リクエストを送信しました。")
+        logger.info(f"{scope} についての要約文章のリクエストを行いました。")
     #ログの有無を確認する
     def check_log_existence(self, time_str: str, scope: str) -> tuple[bool, str]:
         """
@@ -294,17 +274,3 @@ class UserActivityManager:
         else:
             # 見つからなかった場合
             return False, ""
-
-    #RAG活用のリクエストを処理する。
-    def handle_rag_request(self, request:str):#将来的に複数の場合はstrのリストになるかも？
-        #有効なリクエストがない場合
-        if request == "" or "-" not in request or request == "None": #時刻形式が適切でない場合
-            self.bus.publish("RAGisReady", "必要情報なし")#RAG機能ONだけど情報なし
-            return
-        #リクエスト内容に関しての読みわけ　"YYYY-MM-DD HH"形式
-        target = "day" if request.find(" ") == -1 else "hour"
-        exist, content = self.check_log_existence(time_str=request, scope=target)
-        if exist:#すでにログがあるとき
-            self.bus.publish("RAGisReady", content)
-        else:#ログがなければ最終的な完了通知のイベント名を指定して。ログの作成を行う。
-            self.request_summary(scope=target, target_time=request, reply_to="RAGisReady")

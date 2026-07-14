@@ -30,9 +30,16 @@ import os
 import sys
 import re
 import json
+import queue
 import threading
 import logging
 logger = logging.getLogger(__name__)
+
+# LLMキューの優先度定数（数値が小さいほど優先）
+LLM_PRIORITY_USER      = 1  # ユーザー入力への応答
+LLM_PRIORITY_PROACTIVE = 2  # 自発的会話
+LLM_PRIORITY_SUMMARY   = 3  # サマリー生成
+LLM_PRIORITY_PROFILE   = 4  # プロファイル更新（将来用）
 
 #プログラム間でのやりとり
 from ai import AI_geminiAPI
@@ -56,10 +63,43 @@ class AI_Manager():
         self.tool_executor = ToolExecutor(self.bus, self.setting, debug=debug)
         self.bus.subscribe("SettingsUpdated", self.on_settings_updated)
 
+        # LLMキュー
+        self._llm_queue = queue.PriorityQueue()
+        self._queue_counter = 0
+        self._queue_lock = threading.Lock()
+        self._start_worker()
+
+        # ルーティングテーブル（response_event → (priority, handler)）
+        self._route = {
+            "OnUserResponse": (LLM_PRIORITY_USER,    self._do_response),
+            "OnSummaryDone":  (LLM_PRIORITY_SUMMARY, self._do_summary),
+        }
+
         self._initialize_client()
         self.on_settings_updated(setting)
 
         
+
+    def _start_worker(self):
+        worker = threading.Thread(target=self._worker_loop, daemon=True)
+        worker.start()
+
+    def _worker_loop(self):
+        while True:
+            _, _, task = self._llm_queue.get()
+            try:
+                task()
+            except Exception as e:
+                logger.error(f"LLMQueue ワーカーエラー: {e}")
+            finally:
+                self._llm_queue.task_done()
+
+    def _enqueue(self, priority: int, task):
+        with self._queue_lock:
+            self._queue_counter += 1
+            counter = self._queue_counter
+        self._llm_queue.put((priority, counter, task))
+        logger.info(f"LLMQueue: 追加 priority={priority} counter={counter}")
 
     def _initialize_client(self, debug=-1):
         self.active_history_num = self.setting.get_setting_value("LLMSettings.ActiveHistory") *2 -1
@@ -102,7 +142,38 @@ class AI_Manager():
             line.strip("\n")
             self.Character_set_text +=line
         f.close()
-        self.init_prompt= [{"role": "user", "parts":[base_prompt + self.Character_set_text]},{"role": "model", "parts":["了解しました。"]}]
+
+        # キャラクター情報とユーザー情報を分離して保持する
+        # （react_planingはユーザー情報のみ、character_responseはキャラクター情報のみを参照し、
+        #   通常応答時のみ両方を組み合わせて使う）
+        self.character_context_text = base_prompt + self.Character_set_text
+        self.user_profile_text = self._load_user_profile()
+
+    # ユーザープロファイル用ファイルを読み込んでプロンプト用の文章として返す
+    def _load_user_profile(self):
+        sections = []
+        stable_text = self._read_profile_file(os.path.join(APP_DIR, "user_profile.txt"))
+        if stable_text:
+            sections.append(f"## 安定情報\n{stable_text}")
+        recent_text = self._read_profile_file(os.path.join(APP_DIR, "user_logs", "user_profile_recent.md"))
+        if recent_text:
+            sections.append(f"## 直近の傾向\n{recent_text}")
+        return "\n\n".join(sections)
+
+    # プロファイルファイルを1件読み込む。「//」で始まる行はコメントとして除外する。
+    def _read_profile_file(self, path):
+        try:
+            with open(path, encoding="utf-8") as f:
+                lines = f.readlines()
+        except FileNotFoundError:
+            logger.warning(f"ユーザープロファイルファイルが見つかりません: {path}")
+            return ""
+        except Exception as e:
+            logger.warning(f"ユーザープロファイルファイルの読み込みに失敗しました: {path} ({e})")
+            return ""
+
+        content_lines = [line for line in lines if not line.strip().startswith("//")]
+        return "".join(content_lines).strip()
 
 
     def add_talkhistory(self, input_dict:dict, debug = -1):
@@ -141,22 +212,29 @@ class AI_Manager():
             return ["AIサービスが選択されていません。"]
         return self.AI_client.get_models()
     
-    def response(self, input_dict : dict, debug: int = -1):
+    def req_LLM(self, payload, response_event: str, debug: int = -1):
+        entry = self._route.get(response_event)
+        if entry is None:
+            logger.warning(f"req_LLM: 未知のresponse_event '{response_event}'")
+            return
+        priority, handler = entry
+        self._enqueue(priority, lambda: handler(payload, response_event, debug))
+
+    def _do_response(self, payload: dict, response_event: str, debug: int = -1):
         #AIの指定がなかった場合
         if self.AI_client is None:
             output_dict = {"role": "model", "parts":["AIサービスが選択されていません。"],  "token_count": 0}
-            #イベント発行
-            self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
+            self.bus.publish(response_event, output_dict, debug=debug)
             return
-        
+
         #送信する会話履歴の処理
-        self.add_talkhistory(input_dict, debug)
+        self.add_talkhistory(payload, debug)
         if len(self.history) > self.active_history_num:
             past_contents = self.history[-self.active_history_num:]
         else:
             past_contents = self.history
 
-        
+
         #react動作を行う場合
         react_planing_is_on = self.setting.get_setting_value("ApplicationSettings.Permission.ReAct_response")
         if react_planing_is_on:
@@ -166,23 +244,51 @@ class AI_Manager():
 
             result = {"role": "model", "parts": character_response["parts"], "token_count": total_token_count}
             self.add_talkhistory(result)
-            self.bus.publish("AIGenerateMessage", result, debug=debug)
-        
+            self.bus.publish(response_event, result, debug=debug)
+
         #通常の応答
         else:
-            #返答の生成
-            input_contents = self.init_prompt + past_contents
+            #キャラクター情報とユーザー情報を組み合わせて返答を生成
+            combined_text = self.character_context_text
+            if self.user_profile_text:
+                combined_text += f"\n# ユーザープロファイル\n{self.user_profile_text}"
+            combined_prompt = [{"role": "user", "parts": [combined_text]}, {"role": "model", "parts": ["了解しました。"]}]
+
+            input_contents = combined_prompt + past_contents
 
             response = self.AI_client.response(input_contents=input_contents, debug = debug)
             output_dict = {"role": "model", "parts":[response["text"]], "token_count": response["token_count"]}
             self.add_talkhistory(output_dict, debug)
-            #イベント発行
-            self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
+            self.bus.publish(response_event, output_dict, debug=debug)
+
+    def _do_summary(self, payload: dict, response_event: str, debug: int = -1):
+        if self.AI_client is None:
+            return
+        scope    = payload["scope"]
+        time_str = payload["time"]
+        data_str = payload["data"]
+        reply_to = payload.get("reply_to", "")
+
+        if scope == "hour":
+            prompt = f"次のユーザの1時間のアクティビティを要約してください。なるべく具体的なファイル名やタイトルについて触れ、全体的にどのような活動をしていた思われるかを事実ベースでまとめてください。\n{data_str}"
+        elif scope == "day":
+            prompt = (
+                "以下はユーザーの1日の活動記録です。\n"
+                "'hour_summaries'には時間ごとの要約が、'unsummarized_raw_logs'にはまだ要約されていない時間帯の生ログが含まれています。\n"
+                "これらすべてを考慮して、1日の活動全体を3つ程度の主要な出来事にまとめてください。\n"
+                f"{data_str}"
+            )
+        else:
+            logger.warning(f"_do_summary: 未知のscope '{scope}'")
+            return
+
+        input_contents = [{"role": "user", "parts": [prompt]}]
+        response = self.AI_client.response(input_contents=input_contents, debug=debug)
+        self.bus.publish(response_event, time_str, scope, reply_to, response["text"])
 
     # react動作によって情報収集や方針決めを行う-> dict
-    def react_planing(self,  max_react_steps: int = 10, debug: int = -1):
+    def react_planing(self,  max_react_steps: int = 10, debug: int = 1):
         if self.AI_client is None:
-            self.bus.publish("AIGenerateMessage", {"role": "model", "parts": ["AIサービス未選択"], "token_count": 0})
             return
 
         def log_debug(message, level=-1):
@@ -228,6 +334,8 @@ class AI_Manager():
             thought_content =[]
             thought_prompt = (f"あなたは思考専門のユニットです。ユーザーの入力を受け、応答に必要なツールを選択してJSON形式で応答を出力してください。\n"
                               f"必要な情報がそろったと判断した場合は、応答の際に必要な情報および応答の方針についてのみ出力してください。\n"
+                              f"# 【ユーザープロファイル】\n{self.user_profile_text}\n"
+                              f"上記のユーザープロファイルの内容を踏まえ、ユーザーの興味・関心・状況に合った具体的な話題や言い回しを\"response\"に含めてください。\n\n"
                               f"# 【現在の会話履歴】\n{history_context}\n\n"
                               f"# 【現在ツールを利用して取得している情報】\n{tool_infos}\n"
                               f"# 【利用可能なツール】\n{tool_descriptions}\n"
@@ -300,19 +408,9 @@ class AI_Manager():
             indent = "  " * debug
             print(f"{indent}AI_main.py character_response() called.")
         history_context = "\n".join([f"{m['role']}: {m['parts'][0]}" for m in self.history[-self.active_history_num:]])#ここまでの会話履歴を文章として成形
-        character_base_prompt = (f"あなたはユーザのPC上で動作するキャラクターです。「応答方針」に示す文章をキャラクター設定に従った受け答えに変更してください。\n"+
-                                f"これまでの会話履歴および回答例は「これまでの文章」を参照してください。"
-                                f"# 応答規則\n"+
-                                f"- セリフはキャラクターとして会話するように応答し、文章量は最大で3文程度としてください。\n"+
-                                f"- 立ち絵ファイル名は別項目で示されたもののみとし、セリフと合わせて適切なものを選択してください。\n"+
-                                f"## 応答例（立ち絵ファイル名：セリフ）\n"+
-                                f"平穏.png：おはようございます。\n"+
-                                f"笑顔.jpg：今日もいい天気ですね。\n"+ 
-                                f"期待.png：今日も一日頑張りましょう。\n"+
-                                f"# キャラクター設定\n"+
-                                f"{self.Character_set_text}\n"+
-                                f"# 立ち絵ファイル一覧\n"+
-                                f"{self.character_img_list}\n"+
+        character_base_prompt = (self.character_context_text +
+                                f"\n「応答方針」に示す文章を上記のキャラクター設定に従った受け答えに変更してください。\n"+
+                                f"これまでの会話履歴および回答例は「これまでの文章」を参照してください。\n"+
                                 f"# これまでの文章\n"+
                                 f"{history_context}"+
                                 f"# 応答方針\n"+
@@ -321,85 +419,9 @@ class AI_Manager():
         response = self.AI_client.response(input_contents=[{"role": "user", "parts": [character_base_prompt]}], debug=debug)
         result = {"role": "model", "parts": [response["text"]], "token_count": response["token_count"]}
         return result 
-    #RAG情報アリでの応答関数(基本はresponseのコピー)
-    def response_withRAG(self, input_dict : dict, rag_info:str, debug: int = -1,):
-        #AIの指定がなかった場合
-        if self.AI_client is None:
-            output_dict = {"role": "model", "parts":["AIサービスが選択されていません。"], "token_count": 0}
-            #イベント発行
-            self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
-            return
-        
-        #送信する会話履歴の処理
-        self.add_talkhistory(input_dict, debug)
-        if len(self.history) > self.active_history_num:
-            past_contents = self.history[-self.active_history_num:]
-        else:
-            past_contents = self.history
-        #返答の生成
-        rag_contents = [{"role": "model", "parts":[f"# 応答の参考情報\n{rag_info}"]}]
-        input_contents = self.init_prompt + rag_contents + past_contents 
-
-        response = self.AI_client.response(input_contents=input_contents, debug = debug)
-        output_dict = {"role": "model", "parts":[response["text"]], "token_count": response["token_count"]}
-        self.add_talkhistory(output_dict, debug)
-        #イベント発行
-        self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
-
-    
-    #入力された一文の会話辞書からRAGを使う際のデータを選択する。将来的にはリクエストを複数strのlist形式で生成するかも？
-    def make_rag_request(self, input_dict : dict, debug: int = -1):
-        #AIの指定がなかった場合
-        if self.AI_client is None:
-            output_dict = {"role": "model", "parts":["AIサービスが選択されていません。"]}
-            #イベント発行
-            self.bus.publish("AIGenerateMessage", output_dict, debug=debug)
-            m = "error", "AIサービス", "AI(LLM)サービスが選択されていません。\nもしくはAIサービスへの接続に失敗しました。"
-            self.bus.publish("Req_PopUpMessage", m)
-            return
-        #ユーザアクティビティのログおよび活用機能
-        if self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog"):
-            _input = input_dict["parts"]
-            _text =     f"あなたはアシスタントAIです。以下の例に従って出力を行い、ユーザの入力を確認して必要なユーザの活動記録について示してください。\
-                        記録は日と時刻に依存して作成されています。もしも必要がない場合は「None」と返してください。\n\
-                        # 応答の例：\n\
-                        2025年11月10日の要約が欲しいとき->2025-11-10\n\
-                        2025年11月10日18時の要約が欲しいとき->2025-11-10 18\n\
-                        # ユーザの入力\n\
-                        {_input}"
-            _requesttext = str(self.response_onetime(_text))
-            self.bus.publish("Req_RAGInfo", _requesttext)
-        else:
-            logger.warning("RAG機能がONでないのに会話時にRAGの利用が要求されました。")
-    
-
-    #入力文字列に対して文字列形式で返す。一問一答用
-    def response_onetime(self, text, debug = -1):
-        """
-        LLMに入力された文字列を一度だけ応答してもらう。返すのも単純な文字列。
-        """
-        if self.AI_client is None:
-            output_dict = {"role": "model", "parts":["AIサービスが選択されていません。"]}
-            #イベント発行
-            self.bus.publish("AI.response_onetime end", output_dict, debug=debug)
-            return
-        if text == "":
-            return ""
-        
-
-        #返答の生成
-        input = [{"role": "user", "parts":[text]}]
-        
-        response = self.AI_client.response(input_contents=input, debug = debug)
-        output_dict = {"role": "model", "parts":response["text"], "token_count": response["token_count"]}
-        #self.bus.publish("AI.response_onetime end", output_dict, debug=debug)
-        return str(output_dict["parts"])
 
 
 
-
-        
-    
     def test_connection(self, debug: int = -1):
         if self.AI_client is None:
             return (False, "AIサービスが選択されていません。")

@@ -12,6 +12,7 @@
 **tests**
 **user_logs**
 Character_setting.txt
+user_profile.txt
 config.json
 client_secret.json
 oauth_token.json
