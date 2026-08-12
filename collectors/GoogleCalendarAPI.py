@@ -158,9 +158,9 @@ class GoogleScheduleControl:
 def main():
     try:
         gcal = GoogleScheduleControl()
-        start_date = datetime.date(2026, 6, 1)
+        start_date = datetime.date(2026, 7, 1)
         
-        end_date = datetime.date(2026, 7, 1)
+        end_date = datetime.date(2026, 8, 1)
 
         current_date = start_date
         while current_date <= end_date:
@@ -172,7 +172,7 @@ def main():
                                     output_dir="./diary")
             current_date += datetime.timedelta(days=1)
 
-        
+
 
     except (HttpError, ValueError, TypeError) as error:
         print(f"エラーが発生しました: {error}")
