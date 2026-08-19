@@ -402,23 +402,37 @@ class AI_Manager():
         output_dict = {"role": "model", "parts": [thought_text], "token_count": total_token_count}
         return output_dict
 
+
     # base_dictの文章をキャラクター設定に沿った文章に変更して返す
-    def character_response(self, base_dict : dict, debug: int = -1):
+    def character_response(self, base_dict: dict, debug: int = -1):
         if debug != -1:
             indent = "  " * debug
             print(f"{indent}AI_main.py character_response() called.")
-        history_context = "\n".join([f"{m['role']}: {m['parts'][0]}" for m in self.history[-self.active_history_num:]])#ここまでの会話履歴を文章として成形
-        character_base_prompt = (self.character_context_text +
-                                f"\n「応答方針」に示す文章を上記のキャラクター設定に従った受け答えに変更してください。\n"+
-                                f"これまでの会話履歴および回答例は「これまでの文章」を参照してください。\n"+
-                                f"# これまでの文章\n"+
-                                f"{history_context}"+
-                                f"# 応答方針\n"+
-                                f"{base_dict['parts']}"
-                                )
-        response = self.AI_client.response(input_contents=[{"role": "user", "parts": [character_base_prompt]}], debug=debug)
+
+        history_context = "\n".join(
+            [f"{m['role']}: {m['parts'][0]}" for m in self.history[-self.active_history_num:]]
+        )  # ここまでの会話履歴を文章として成形
+
+        # キャラクター設定を提示し、モデルにいったん受諾させることで
+        # 「設定説明」と「今回の変換タスク」を明確に切り分ける
+        priming = [
+            {"role": "user", "parts": [self.character_context_text]},
+            {"role": "model", "parts": ["承知しました。"]}
+        ]
+
+        task_prompt = (
+            "以下は直前までの会話履歴です。\n"
+            f"{history_context}\n"
+            "この状況を踏まえ、次の「応答方針」の内容を、キャラクター設定に沿った口調・文章量（最大3文程度）で"
+            "実際のセリフに書き換えてください。方針に含まれる具体的な内容（固有名詞・提案内容など）は省略せず反映してください。\n"
+            f"# 応答方針\n{base_dict['parts'][0]}"
+        )
+
+        input_contents = priming + [{"role": "user", "parts": [task_prompt]}]
+
+        response = self.AI_client.response(input_contents=input_contents, debug=debug)
         result = {"role": "model", "parts": [response["text"]], "token_count": response["token_count"]}
-        return result 
+        return result
 
 
 

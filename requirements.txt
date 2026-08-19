@@ -6,5 +6,7 @@ simpleaudio
 Pillow
 google-generativeai
 google-api-core
+google-auth-oauthlib # collectors/GoogleCalendarCollector.py のOAuth認証で利用
+google-api-python-client # collectors/GoogleCalendarCollector.py のGoogle Calendar/Tasks API呼び出しで利用（googleapiclientの提供元）
 SpeechRecognition # services/speech2text.py 音声入力で利用
 pyaudio # SpeechRecognitionがマイク入力を取得する際に必要

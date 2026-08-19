@@ -400,8 +400,34 @@ def get_default_data() -> Dict[str, Any]:
                             "description": "許可された項目をアプリ内で記録・要約・保存して、必要に応じて利用します。\n個人情報を多大に含み、AIサービスの使用量が大きくなるためOllamaでの動作を推奨します。",
                             "type": "bool",
                             "value": True
+                        },
+                        "get_calendar_info": {
+                            "name": "Googleカレンダーの予定",
+                            "description": "Googleカレンダーの予定・タスクを取得・利用します。"
+                                            "利用にはclient_secret.jsonの配置と、起動時のGoogle認証が必要です。",
+                            "type": "bool",
+                            "value": False
                         }
-                        
+
+                    }
+                },
+                "GoogleCalendar": {
+                    "name": "Googleカレンダー連携の詳細設定",
+                    "type": "section",
+                    "children": {
+                        "FetchRangeDays": {
+                            "name": "予定を取得する日数（本日から先）",
+                            "type": "int",
+                            "value": 7
+                        },
+                        "CalendarIds": {
+                            "name": "取得するカレンダーID（任意・カンマ区切り）",
+                            "description": "空欄の場合は自分が所有するカレンダー（マイカレンダーに表示される全カレンダー）を自動的に取得します。"
+                                            "特定のカレンダーだけに絞りたい場合や、共有・購読カレンダーを追加したい場合は"
+                                            "カレンダーID（Googleカレンダーの設定画面で確認できます）をカンマ区切りで入力してください。",
+                            "type": "str",
+                            "value": ""
+                        }
                     }
                 }
             }
