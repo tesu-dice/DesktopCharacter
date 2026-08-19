@@ -16,6 +16,7 @@ from ai import AI_main
 from services.release_check import check_nowver_is_newestver
 from services.WindowsInfoCollecter import get_datetime
 from ui.TTS_VoiceVoxEngine import start_server
+from collectors.GoogleCalendarCollector import GoogleCalendarCollector
 
 
 
@@ -60,6 +61,7 @@ class myapp():
             #各種サービス要素
         self.WinInfo = WindowsInfoCollecter.win_info_collector(self.bus, self.setting, debug=debug)
         self.UserDataLoger = UserDataLogger.UserActivityManager(self.bus, dir = app_dir)
+        self.CalendarCollector = GoogleCalendarCollector(self.bus, self.setting, self.app_dir, debug=debug)
         self.AI_Manager = AI_main.AI_Manager(self.bus, self.setting, TalkHistory, debug=debug)
         self.ui = UI_main.UI(self.bus, self.setting, debug=debug)
         self.S2T = speech2text.speech2text_manager(self.bus, self.setting, debug=debug)
@@ -99,6 +101,8 @@ class myapp():
         self.bus.subscribe_workflow("Req_UserActivityLog", handler=self.WinInfo.get_plaing_media, response_event="Req_UserActivityLog_media")
         self.bus.subscribe_workflow("Req_UserActivityLog", handler=self.WinInfo.get_datetime, response_event="Req_UserActivityLog_time")
         self.bus.subscribe_when(["Req_UserActivityLog_time","Req_UserActivityLog_win", "Req_UserActivityLog_media"], self.UserDataLoger.add_userlog)
+            #Googleカレンダー情報のキャッシュ更新（定期・会話開始時にReq_CalendarInfoをpublish）
+        self.bus.subscribe("Req_CalendarInfo", self.CalendarCollector.refresh_cache)
             #一時間毎, 一日毎の要約作成
         self.bus.subscribe("Req_UserSummaryLog", self.handle_summary_request)
         self.bus.subscribe("OnSummaryDone", self.UserDataLoger.add_summary_log)
@@ -175,7 +179,10 @@ class myapp():
         # self.ui.afterでスケジュールされたupdateをキャンセル
         if hasattr(self, 'update_id'):
             self.ui.after_cancel(self.update_id)
-        
+
+        # Googleカレンダーのキャッシュを削除（安全性のため）
+        self.CalendarCollector.clear_cache()
+
         # UIを破棄して現在のプロセスを終了する
         self.ui.destroy()
 
@@ -213,7 +220,11 @@ class myapp():
             allow_logging_access = self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog")
             if allow_time_access == True and allow_logging_access == True:
                 self.bus.publish("Req_UserActivityLog")
-                
+
+            #Googleカレンダー情報の定期取得要求（権限は別概念のため独立したif文にする）
+            if self.setting.get_setting_value("ApplicationSettings.Permission.get_calendar_info") == True:
+                self.bus.publish("Req_CalendarInfo")
+
         #テスト用
 
         
@@ -221,6 +232,9 @@ class myapp():
         self.update_id = self.ui.after(10*1000, self.update, debug)
 
     def handle_user_message(self, input_dict, debug=-1):
+        #会話開始タイミングでのカレンダー情報の非同期更新（req_LLMの呼び出し自体は変更しない）
+        if self.setting.get_setting_value("ApplicationSettings.Permission.get_calendar_info") == True:
+            self.bus.publish("Req_CalendarInfo")
         self.AI_Manager.req_LLM(
             payload=input_dict,
             response_event="OnUserResponse",
