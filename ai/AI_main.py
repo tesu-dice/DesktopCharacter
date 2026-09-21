@@ -262,12 +262,19 @@ class AI_Manager():
             self.bus.publish(response_event, output_dict, debug=debug)
 
     def _do_summary(self, payload: dict, response_event: str, debug: int = -1):
-        if self.AI_client is None:
-            return
         scope    = payload["scope"]
         time_str = payload["time"]
         data_str = payload["data"]
         reply_to = payload.get("reply_to", "")
+
+        #AIサービスが未設定の場合：ポップアップ通知のうえキャッチアップを停止する（response_eventはpublishしない）
+        if self.AI_client is None:
+            logger.warning("_do_summary: AIサービスが未設定のため要約できません。")
+            self.bus.publish("Req_PopUpMessage", "error", "要約機能エラー",
+                              "AIサービスが選択されていないため、要約のキャッチアップ処理を"
+                              "停止しました。\n設定でAIサービスを選択し、アプリを再起動してください。")
+            self.bus.publish("OnSummaryLLMError", scope, time_str)
+            return # response_eventはpublishしない（add_summary_logを呼ばせない）
 
         if scope == "hour":
             prompt = f"次のユーザの1時間のアクティビティを要約してください。なるべく具体的なファイル名やタイトルについて触れ、全体的にどのような活動をしていた思われるかを事実ベースでまとめてください。\n{data_str}"
@@ -279,12 +286,27 @@ class AI_Manager():
                 f"{data_str}"
             )
         else:
+            #未知scope：実運用では起きない防御コード。プレースホルダー保存＋続行のためresponse_eventは必ずpublishする
             logger.warning(f"_do_summary: 未知のscope '{scope}'")
+            self.bus.publish(response_event, time_str, scope, reply_to, "内部エラーにより要約できませんでした。")
             return
 
-        input_contents = [{"role": "user", "parts": [prompt]}]
-        response = self.AI_client.response(input_contents=input_contents, debug=debug)
-        self.bus.publish(response_event, time_str, scope, reply_to, response["text"])
+        try:
+            input_contents = [{"role": "user", "parts": [prompt]}]
+            response = self.AI_client.response(input_contents=input_contents, debug=debug)
+            result_text = response["text"]
+        except Exception as e:
+            #LLM呼び出し失敗：AI未設定時と同じ「AIサービスが使えない」扱いでキャッチアップを停止する
+            logger.error(f"_do_summary: LLM呼び出しに失敗しました。(scope={scope}, time={time_str}, error={e})")
+            self.bus.publish("Req_PopUpMessage", "error", "要約機能エラー",
+                              "アクティビティ要約の生成中にエラーが発生したため、"
+                              "要約のキャッチアップ処理を停止しました。\n"
+                              "設定（AIサービスの接続状況など）を確認し、アプリを再起動してください。\n"
+                              f"詳細: {e}")
+            self.bus.publish("OnSummaryLLMError", scope, time_str)
+            return # response_eventはpublishしない（add_summary_logを呼ばせない）
+
+        self.bus.publish(response_event, time_str, scope, reply_to, result_text)
 
     # react動作によって情報収集や方針決めを行う-> dict
     def react_planing(self,  max_react_steps: int = 10, debug: int = 1):
