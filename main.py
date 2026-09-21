@@ -106,6 +106,10 @@ class myapp():
             #一時間毎, 一日毎の要約作成
         self.bus.subscribe("Req_UserSummaryLog", self.handle_summary_request)
         self.bus.subscribe("OnSummaryDone", self.UserDataLoger.add_summary_log)
+            #要約のキャッチアップ（定刻トリガーの代替、1tick=1件のトリクル方式）
+        self.bus.subscribe("Req_SummaryCatchup", self.UserDataLoger.run_catchup_tick)
+        self.bus.subscribe("OnCatchupSummaryDone", self.UserDataLoger._on_catchup_done)
+        self.bus.subscribe("OnSummaryLLMError", self.UserDataLoger._on_catchup_llm_error)
 
         #アプリケーションの終了
         self.bus.subscribe("Req_ExitApp", self.exit)
@@ -220,6 +224,10 @@ class myapp():
             allow_logging_access = self.setting.get_setting_value("ApplicationSettings.Permission.UserActivityLog")
             if allow_time_access == True and allow_logging_access == True:
                 self.bus.publish("Req_UserActivityLog")
+
+            #未要約ログのキャッチアップ要求（5分毎、1tickにつき1件。UserActivityLogの権限に相乗り）
+            if allow_logging_access == True:
+                self.bus.publish("Req_SummaryCatchup")
 
             #Googleカレンダー情報の定期取得要求（権限は別概念のため独立したif文にする）
             if self.setting.get_setting_value("ApplicationSettings.Permission.get_calendar_info") == True:
