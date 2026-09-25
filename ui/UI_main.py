@@ -8,6 +8,7 @@
 import tkinter as tk
 from tkinter import ttk  # スタイル付きウィジェットのため
 from tkinter import messagebox
+import threading
 import logging
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ from services.Event_Bus import EventBus
 from services.WindowsInfoCollecter import get_TotalMonitorSize
 from ui import TTS_VoiceVoxEngine
 from ui import TTS_WindowsNarratorManager
+from ui import TTS_VoisonaTalkEngine
 from ui import UI_characterImage
 from ui import UI_settings
 
@@ -73,6 +75,8 @@ class UI(tk.Tk):
         self.context_menu_manager = None
         self.TTS = None # TTSクライアントのインスタンスを保持
         self.engine_process = None # VoiceVoxのプロセスを保持
+        self.voisona_process = None # VoisonaTalkのプロセスを保持（自アプリが起動した場合のみ）
+        self._voisona_session_disabled = False # VoisonaTalk未起動・API無効を検知した場合、セッション中Trueにする
         self.setting_window = None # 設定ウィンドウのインスタンスを保持
         self.talk_window = None # 会話ウィンドウのインスタンスを保持
         self.charaImg = None
@@ -114,6 +118,9 @@ class UI(tk.Tk):
             self.TTS = TTS_VoiceVoxEngine
         elif selected_service == "windowsNarrator":
             self.TTS = TTS_WindowsNarratorManager
+        elif selected_service == "VoisonaTalk":
+            self.TTS = TTS_VoisonaTalkEngine.VoisonaTalkClient(self.setting, debug=self.debug)
+            self._voisona_session_disabled = False # 設定適用時に再試行できるようにリセットする
         else:
             self.TTS = None
             logger.warning(f"選択されたTTSサービス '{selected_service}' はサポートされていません。")
@@ -161,24 +168,28 @@ class UI(tk.Tk):
             logger.warning("TTSクライアントが初期化されていないため、読み上げをスキップします。")
             return
 
-        texts = talk_dict.get("parts")[0]
-        for text in texts.split("\n"):
-            if not text:
-                continue
-            
-            image_name = None
-            if "：" in text:
-                parts = text.split("：", 1)
-                image_name = parts[0]
-                text_to_speak = parts[1]
-            else:
-                text_to_speak = text
+        if talk_dict.get("error"):
+            # JSON生成失敗時は読み上げ・画像更新を行わない
+            return
+
+        segments = talk_dict.get("segments")
+        if not segments:
+            return
+
+        engine = self.setting.get_setting_value("VoiceSettings.engine")
+
+        for segment in segments:
+            image_name = segment.get("Image")
+            text_to_speak = segment.get("Text", "")
+            emotion = segment.get("Emotion") or {}
 
             if image_name:
                 self.update_character_image(image_name)
-            
+
+            if not text_to_speak:
+                continue
+
             #読み上げ処理
-            engine = self.setting.get_setting_value("VoiceSettings.engine")
             if engine == "VOICEVOX":
                 speaker = self.setting.get_setting_value("VoiceSettings.VOICEVOX.Model")
                 speaker = speaker.split("=")[-1]
@@ -186,21 +197,69 @@ class UI(tk.Tk):
             elif engine == "windowsNarrator":
                 speaker = self.setting.get_setting_value("VoiceSettings.windowsNarrator.Model")
                 self.TTS.text_to_speech(text_to_speak, model_description=speaker, debug=debug)
-                
+            elif engine == "VoisonaTalk":
+                self._speak_with_voisona(text_to_speak, emotion, debug)
+
+    def _speak_with_voisona(self, text, emotion, debug=-1):
+        """VoisonaTalkでの読み上げと、失敗時の通知・セッション内無効化を行う。"""
+        if self._voisona_session_disabled:
+            logger.info("VoisonaTalkはセッション内で無効化されているため、読み上げをスキップします。")
+            return
+
+        result = self.TTS.text_to_speech(text, emotion, debug=debug)
+        if not result.get("ok"):
+            if result.get("status_code") == 409:
+                # リクエストキュー輻輳は一時的なものとして扱い、セッション内無効化はしない
+                self.bus.publish("Req_PopUpMessage", "error", "VoisonaTalk輻輳エラー",
+                                  "VoisonaTalkのリクエストが混雑しています。しばらくしてから再度お試しください。")
+            else:
+                self._voisona_session_disabled = True
+                self.bus.publish("Req_PopUpMessage", "error", "VoisonaTalk読み上げエラー",
+                                  f"VoisonaTalkでの音声合成に失敗しました。\n詳細: {result.get('reason')}")
+
     def start_TTS_Server(self):
         print("start_TTS_Server() called.")
         print(self.setting.get_setting_value("VoiceSettings.engine"), self.setting.get_setting_value("VoiceSettings.VOICEVOX.autorun"), self.engine_process)
-        """設定に基づいてVOICEVOXサーバーを起動します。"""
+        """設定に基づいてTTSサーバーを起動します。"""
+        engine = self.setting.get_setting_value("VoiceSettings.engine")
+
         if self.engine_process is None and \
-           self.setting.get_setting_value("VoiceSettings.engine") == "VOICEVOX" and \
+           engine == "VOICEVOX" and \
            self.setting.get_setting_value("VoiceSettings.VOICEVOX.autorun") == True:
-            
+
             self.engine_process = TTS_VoiceVoxEngine.start_server(
                 self.setting.get_setting_value("VoiceSettings.VOICEVOX.path"),
                 self.setting.get_setting_value("VoiceSettings.VOICEVOX.usegpu"),
                 debug=self.debug
             )
+
+        if self.voisona_process is None and \
+           engine == "VoisonaTalk" and \
+           self.setting.get_setting_value("VoiceSettings.VoisonaTalk.autorun") == True:
+            self._start_voisona_server()
+
         self.bus.publish("Start_TTS_Server", self.engine_process)
+
+    def _start_voisona_server(self):
+        """VoisonaTalkの疎通確認・（未起動時のみ）起動・起動待機（非同期）を行う。"""
+        if not isinstance(self.TTS, TTS_VoisonaTalkEngine.VoisonaTalkClient):
+            return
+
+        if self.TTS.is_available(debug=self.debug):
+            logger.info("VoisonaTalkは既に起動済みのため、新規起動は行いません。")
+            return
+
+        path = self.setting.get_setting_value("VoiceSettings.VoisonaTalk.path")
+        self.voisona_process = TTS_VoisonaTalkEngine.start_server(path, debug=self.debug)
+        threading.Thread(target=self._wait_voisona_ready, daemon=True).start()
+
+    def _wait_voisona_ready(self):
+        """VoisonaTalk起動完了までTkメインループをブロックせず待機し、タイムアウト時はフォールバックする。"""
+        ready = self.TTS.wait_until_available(debug=self.debug)
+        if not ready:
+            self._voisona_session_disabled = True
+            self.bus.publish("Req_PopUpMessage", "error", "VoisonaTalk起動エラー",
+                              "VoisonaTalkの起動を確認できませんでした。実行パスや設定を確認してください。")
 
     def _handle_character_click(self):
         """キャラクタークリック時の処理"""

@@ -16,6 +16,7 @@ from ai import AI_main
 from services.release_check import check_nowver_is_newestver
 from services.WindowsInfoCollecter import get_datetime
 from ui.TTS_VoiceVoxEngine import start_server
+from ui import TTS_VoisonaTalkEngine
 from collectors.GoogleCalendarCollector import GoogleCalendarCollector
 
 
@@ -186,6 +187,10 @@ class myapp():
 
         # Googleカレンダーのキャッシュを削除（安全性のため）
         self.CalendarCollector.clear_cache()
+
+        # VoisonaTalkプロセスの終了（自アプリが起動した場合のみ。手動起動していたインスタンスは終了させない）
+        if getattr(self.ui, "voisona_process", None) is not None:
+            TTS_VoisonaTalkEngine.kill_server(self.ui.voisona_process, debug=debug)
 
         # UIを破棄して現在のプロセスを終了する
         self.ui.destroy()

@@ -192,6 +192,17 @@ class UserSettings:
             if "max" in item.value_range and new_value > item.value_range["max"]:
                 print(f"警告: '{path}' の値 {new_value} は最大値 {item.value_range['max']} を超えています。")
                 return False
+        elif item.item_type == "float":
+            if not isinstance(new_value, (int, float)) or isinstance(new_value, bool):
+                print(f"警告: '{path}' の値 '{new_value}' は数値ではありません。")
+                return False
+            new_value = float(new_value)
+            if "min" in item.value_range and new_value < item.value_range["min"]:
+                print(f"警告: '{path}' の値 {new_value} は最小値 {item.value_range['min']} 未満です。")
+                return False
+            if "max" in item.value_range and new_value > item.value_range["max"]:
+                print(f"警告: '{path}' の値 {new_value} は最大値 {item.value_range['max']} を超えています。")
+                return False
         elif item.item_type == "object":
             if not isinstance(new_value, dict):
                 print(f"警告: '{path}' (型 object) の値は辞書である必要があります。")
@@ -528,7 +539,8 @@ def get_default_data() -> Dict[str, Any]:
                     "options": [
                         "None",
                         "windowsNarrator",
-                        "VOICEVOX"
+                        "VOICEVOX",
+                        "VoisonaTalk"
                     ]
                 },
                 "windowsNarrator": {
@@ -565,6 +577,54 @@ def get_default_data() -> Dict[str, Any]:
                         "Model": {
                             "type": "choice_with_func",
                             "name": "音声モデル",
+                            "value": "未選択",
+                            "options": []
+                        }
+                    }
+                },
+                "VoisonaTalk": {
+                    "name": "VoisonaTalk 設定",
+                    "type": "section",
+                    "children": {
+                        "path": {
+                            "type": "path",
+                            "name": "VoisonaTalkの実行パス",
+                            "value": ""
+                        },
+                        "autorun": {
+                            "type": "bool",
+                            "name": "アプリ起動時にVoisonaTalkを自動で起動",
+                            "value": False
+                        },
+                        "port": {
+                            "type": "int",
+                            "name": "APIポート番号",
+                            "value": 32766
+                        },
+                        "account_email": {
+                            "type": "str",
+                            "name": "アカウント（メールアドレス）",
+                            "value": ""
+                        },
+                        "account_password": {
+                            "type": "str",
+                            "name": "APIパスワード",
+                            "value": ""
+                        },
+                        "speed": {
+                            "type": "float",
+                            "name": "読み上げ速度",
+                            "description": "VoisonaTalk APIのspeedパラメータ。設定可能範囲は0.2〜5.0です。"
+                                            "1.0が標準速度で、値が大きいほど速く（最大5.0で標準の5倍速）、"
+                                            "値が小さいほど遅く（最小0.2で標準の1/5倍速）読み上げます。"
+                                            "スタイル・文章量・音声ライブラリに関わらず、常にこの値で一律に読み上げます。",
+                            "min": 0.2,
+                            "max": 5,
+                            "value": 1.0
+                        },
+                        "Model": {
+                            "type": "choice_with_func",
+                            "name": "音声ライブラリ",
                             "value": "未選択",
                             "options": []
                         }
