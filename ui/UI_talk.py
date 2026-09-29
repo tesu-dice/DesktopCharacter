@@ -84,16 +84,26 @@ class TalkWindow(tk.Toplevel):
 
     def add_log(self, talkhistory, debug=-1):
         """ログ表示エリアにメッセージを追加します。"""
-        message = str(talkhistory.get("parts")[0])
-        if talkhistory.get("role") == "user":
-            message = f"[ 入力 ]\n{message}\n"
-        elif talkhistory.get("role") == "model":
-            message = f"[ 出力 ]\n{message}\n"
-            #メタデータ表示ONならトークン数を表示
-            if self.setting.get_setting_value("ApplicationSettings.ShowMetadatas") == True:
-                message += "利用したトークン数：" + str(talkhistory["token_count"])+ "\n"
+        role = talkhistory.get("role")
+
+        if role == "user":
+            message = f"[ 入力 ]\n{str(talkhistory.get('parts')[0])}\n"
+        elif role == "model":
+            if talkhistory.get("error"):
+                # JSONパース・検証に失敗した場合は生成内容ではなくエラー文言を表示する
+                message = f"[ 出力エラー ]\n{talkhistory['error']}\n"
+            else:
+                segments = talkhistory.get("segments")
+                if segments:
+                    text_body = "".join(seg.get("Text", "") for seg in segments)
+                else:
+                    text_body = str(talkhistory.get("parts")[0])
+                message = f"[ 出力 ]\n{text_body}\n"
+                #メタデータ表示ONならトークン数を表示
+                if self.setting.get_setting_value("ApplicationSettings.ShowMetadatas") == True:
+                    message += "利用したトークン数：" + str(talkhistory.get("token_count", 0)) + "\n"
         else:
-            message = f"[ その他 ]\n{message}\n"
+            message = f"[ その他 ]\n{str(talkhistory.get('parts')[0])}\n"
         message += "\n"
 
 

@@ -15,7 +15,9 @@ import locale
 def get_SAPIVoice_names():
     voice_names = []
     try:
-        speakers = win32com.client.Dispatch("SAPI.SpObjectTokenCategory")
+        # dynamic.Dispatch（レイトバインディング）を使い、win32comのgen_pyキャッシュ
+        # （型情報とズレるとAttributeErrorになることがある）に依存しないようにする
+        speakers = win32com.client.dynamic.Dispatch("SAPI.SpObjectTokenCategory")
         speakers.SetID(r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech_OneCore\Voices", False)
     except Exception as e:
         speakers.SetID(r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices", False)
@@ -42,11 +44,11 @@ def text_to_speech(text, model_description, rate= 2.0, debug=-1):
         print(f"{indent}text = {text}")
         print(f"{indent}model_description = {model_description}")
     #print(f"windowsNarrator.py text_to_speech(), text={text}, {model_description}, rate={rate}")
-    sapi = win32com.client.Dispatch("SAPI.SpVoice")
+    sapi = win32com.client.dynamic.Dispatch("SAPI.SpVoice")
     try:
         #読み上げモデル取得
         try:
-            speakers = win32com.client.Dispatch("SAPI.SpObjectTokenCategory")
+            speakers = win32com.client.dynamic.Dispatch("SAPI.SpObjectTokenCategory")
             speakers.SetID(r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech_OneCore\Voices", False)
         except Exception as e:
             speakers.SetID(r"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices", False)

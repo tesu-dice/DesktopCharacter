@@ -13,10 +13,36 @@ logger = logging.getLogger(__name__)
 from services.config_controller import UserSettings
 
 
+# AI応答のJSONスキーマ（Text/Image/Emotionの配列）を生成する。
+# style_namesを渡すとEmotionオブジェクトのプロパティとして各スタイル名を明示する
+# （Gemini側は未知のキーを推測できないため、実際に値を入れてほしいスタイル名を
+#   スキーマ自体に列挙しないとEmotionが常に空になることを実機確認済み）。
+def _build_response_schema(style_names=None):
+    if style_names:
+        emotion_schema = {
+            "type": "object",
+            "properties": {name: {"type": "number"} for name in style_names}
+        }
+    else:
+        emotion_schema = {"type": "object"}
+
+    return {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "Text": {"type": "string"},
+                "Image": {"type": "string"},
+                "Emotion": emotion_schema
+            },
+            "required": ["Text", "Image"]
+        }
+    }
+
 
 class geminiAI():
         #初期化
-        def __init__(self, usersetting:UserSettings, debug = -1):
+        def __init__(self, usersetting:UserSettings, style_names=None, debug = -1):
             self.usersetting = usersetting
 
             yourAPIkey = usersetting.get_setting_value("LLMSettings.geminiAPI.key")#APIkeyの設定
@@ -26,15 +52,18 @@ class geminiAI():
                 print(f"{indent}yourAPIkey = {yourAPIkey}")
                 debug = debug + 1 if debug >= 0 else -1
 
-            
+
             genai.configure(api_key=yourAPIkey)
 
-            
-        
 
-            
 
-            # モデルを準備
+
+
+
+            # モデルを準備（既定はプレーンテキスト。character応答生成など構造化JSONが
+            # 必要な呼び出しのみ、response()にresponse_format="json"を渡して
+            # self._json_generation_configへ切り替える。要約生成・ReActの思考ステップ等、
+            # Text/Image/Emotionのスキーマに従う必要のない呼び出しを巻き込まないため）
             generation_config = {"temperature":1,
                                 "top_p":0.95,
                                 "top_k":40,
@@ -43,6 +72,13 @@ class geminiAI():
                     #            "max_output_tokens":5000
                     #            }
                                 #
+            self._json_generation_config = {
+                "temperature": 1,
+                "top_p": 0.95,
+                "top_k": 40,
+                "response_mime_type": "application/json",
+                "response_schema": _build_response_schema(style_names)
+            }
             safety_settings = [
                 {
                     "category": "HARM_CATEGORY_HARASSMENT",
@@ -81,7 +117,9 @@ class geminiAI():
             return names
         
         #入力文字列をAIに送信、返答を返す。
-        def response(self, input_contents:list, debug=-1):
+        #response_format="json"を指定した場合のみ、Text/Image/EmotionのJSON配列スキーマを強制する
+        #（要約生成・ReActの思考ステップ等、character応答以外の呼び出しでは指定しないこと）。
+        def response(self, input_contents:list, response_format=None, debug=-1):
             if debug >= 0:
                 indent = "  " * debug
                 print(f"{indent}geminiAPI.py response() was called.")
@@ -89,7 +127,10 @@ class geminiAI():
 
             #送信するコンテンツの選別
             #会話とその記録
-            response = self.model.generate_content(contents=input_contents)
+            if response_format == "json":
+                response = self.model.generate_content(contents=input_contents, generation_config=self._json_generation_config)
+            else:
+                response = self.model.generate_content(contents=input_contents)
             print(response.text)
             print(response.usage_metadata)
             response_dict = {"text": response.text, "token_count": response.usage_metadata.total_token_count}

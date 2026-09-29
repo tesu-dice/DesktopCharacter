@@ -23,16 +23,43 @@ def encode_image_to_base64(image_path: str):
         print(f"画像のエンコード中にエラーが発生しました: {e}")
         return None
 
+# AI応答のJSONスキーマ（Text/Image/Emotionの配列）を生成する。
+# AI_geminiAPI.py:_build_response_schemaと同じ形（標準的なJSON Schema）。
+# style_namesを渡すとEmotionオブジェクトのプロパティとして各スタイル名を明示する。
+def _build_response_schema(style_names=None):
+    if style_names:
+        emotion_schema = {
+            "type": "object",
+            "properties": {name: {"type": "number"} for name in style_names}
+        }
+    else:
+        emotion_schema = {"type": "object"}
+
+    return {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "properties": {
+                "Text": {"type": "string"},
+                "Image": {"type": "string"},
+                "Emotion": emotion_schema
+            },
+            "required": ["Text", "Image"]
+        }
+    }
+
+
 # AI用のクラス
 class ollamaAI():
     """
     Ollama APIを介してローカルLLMと会話するためのクラス。
     GeminiAPIクラスを参考にしてOllama向けに調整。
     """
-    def __init__(self, usersetting, debug: int = -1): # UserSettingsの型ヒントを削除 (外部依存のため)
+    def __init__(self, usersetting, style_names=None, debug: int = -1): # UserSettingsの型ヒントを削除 (外部依存のため)
         # 初期化
         self.usersetting = usersetting
         self.debug = debug
+        self.response_schema = _build_response_schema(style_names)
         # 初期化読み取り
         # config_controllerが利用できない場合を考慮し、デフォルト値を設定
         self.ollama_api_base_url = self.usersetting.get_setting_value("LLMSettings.Ollama.URL") + "/api" \
@@ -55,7 +82,9 @@ class ollamaAI():
             self.debug = self.debug + 1 if self.debug >= 0 else -1
 
     # 入力文字列をAIに送信、返答を返す。画像パスが与えられれば画像も送信。
-    def response(self, input_contents: list, image_path: str = None, debug: int = -1):
+    # response_format="json"を指定した場合のみ、Text/Image/EmotionのJSON配列スキーマを強制する
+    # （要約生成・ReActの思考ステップ等、character応答以外の呼び出しでは指定しないこと）。
+    def response(self, input_contents: list, image_path: str = None, response_format=None, debug: int = -1):
         # デバッグの設定
         debug = debug
         if debug >= 0:
@@ -107,6 +136,8 @@ class ollamaAI():
             "messages": ollama_messages, # ここで正しく変換されたmessagesを使用
             "stream": stream
         }
+        if response_format == "json":
+            payload["format"] = self.response_schema
 
         # 会話の処理
         response_text = ""

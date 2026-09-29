@@ -20,6 +20,7 @@ from ai import AI_geminiAPI
 from ai import AI_ollama
 from ui import TTS_VoiceVoxEngine # VoiceVoxエンジンのスピーカーリストなどを取得するために使用
 from ui import TTS_WindowsNarratorManager # Windowsナレーターの音声モデルなどを取得するために使用
+from ui import TTS_VoisonaTalkEngine # VoisonaTalkの音声ライブラリ一覧などを取得するために使用
 
 class Tooltip:
     """
@@ -256,8 +257,17 @@ class UI(tk.Toplevel):
                             return
                     elif full_path == "VoiceSettings.windowsNarrator.Model":
                         func_to_call = TTS_WindowsNarratorManager.get_SAPIVoice_names
-                    
-                    
+                        #VoisonaTalkの音声ライブラリ選択（自プロセス起動有無ではなく実際のAPI疎通確認で判定する）
+                    elif full_path == "VoiceSettings.VoisonaTalk.Model":
+                        voisona_client = TTS_VoisonaTalkEngine.VoisonaTalkClient(self.settings, debug=-1)
+                        if voisona_client.is_available(debug=-1):
+                            func_to_call = voisona_client.get_voices
+                        else:
+                            combobox['values'] = ["VoisonaTalk APIに接続できません。"]
+                            var.set("VoisonaTalk APIに接続できません。")
+                            return
+
+
                     # 他のパスと関数のマッピングをここに追加できます
                     # elif full_path == "some.other.path":
                     #     func_to_call = some_other_function
@@ -307,6 +317,13 @@ class UI(tk.Toplevel):
 
         elif item_obj.item_type == "int":
             # 整数値の入力フィールド
+            var = tk.StringVar(value=str(initial_value)) # 現在の値を文字列としてStringVarにセット
+            entry = ttk.Entry(parent_widget_frame, textvariable=var)
+            entry.grid(row=0, column=1, sticky="ew", padx=5)
+            self._widget_vars[full_path] = var # 変数を保存
+
+        elif item_obj.item_type == "float":
+            # 小数値の入力フィールド
             var = tk.StringVar(value=str(initial_value)) # 現在の値を文字列としてStringVarにセット
             entry = ttk.Entry(parent_widget_frame, textvariable=var)
             entry.grid(row=0, column=1, sticky="ew", padx=5)
@@ -450,6 +467,21 @@ class UI(tk.Toplevel):
                         logger.warning(f"警告: '{path}' の値 {new_value} は最大値 {max_val} を超えているため、{max_val} に調整しました。")
                 except ValueError:
                     logger.error(f"警告: '{path}' の値 '{new_value}' は整数ではありません。元の値を保持します。")
+                    new_value = item.value # 無効な場合は元の値を保持
+            elif item.item_type == "float":
+                try:
+                    new_value = float(new_value)
+                    # 範囲チェックとクランプ（APIの実際の制約に合わせた設定側のmin/maxを使用）
+                    min_val = item.value_range.get("min")
+                    max_val = item.value_range.get("max")
+                    if min_val is not None and new_value < min_val:
+                        new_value = min_val
+                        logger.warning(f"警告: '{path}' の値 {new_value} は最小値 {min_val} 未満のため、{min_val} に調整しました。")
+                    if max_val is not None and new_value > max_val:
+                        new_value = max_val
+                        logger.warning(f"警告: '{path}' の値 {new_value} は最大値 {max_val} を超えているため、{max_val} に調整しました。")
+                except ValueError:
+                    logger.error(f"警告: '{path}' の値 '{new_value}' は数値ではありません。元の値を保持します。")
                     new_value = item.value # 無効な場合は元の値を保持
             elif item.item_type == "bool":
                 # BooleanVar.get() は既に適切なブール値を返す

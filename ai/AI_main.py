@@ -47,6 +47,7 @@ from ai import AI_ollama
 from services.Event_Bus import EventBus
 from services.config_controller import UserSettings, APP_DIR
 from ai_tools.tools_main import ToolExecutor
+from ui import TTS_VoisonaTalkEngine
 
 #パス取得
 """
@@ -107,10 +108,13 @@ class AI_Manager():
         selected_service = self.setting.get_setting_value("LLMSettings.Service")
         logger.info(f"AIクライアントを初期化しています... サービス: {selected_service}")
 
+        # VoisonaTalk利用時のみ、Emotion用の応答スキーマに使うスタイル名一覧を取得する
+        voisona_style_names = self._load_voisona_style_names(debug)
+
         if selected_service == "geminiAPI":
-            self.AI_client = AI_geminiAPI.geminiAI(self.setting, debug=debug)
+            self.AI_client = AI_geminiAPI.geminiAI(self.setting, style_names=voisona_style_names, debug=debug)
         elif selected_service == "Ollama":
-            self.AI_client = AI_ollama.ollamaAI(self.setting, debug=debug)
+            self.AI_client = AI_ollama.ollamaAI(self.setting, style_names=voisona_style_names, debug=debug)
         else:
             self.AI_client = None
             logger.warning(f"選択されたAIサービス '{selected_service}' はサポートされていないため、AIクライアントは設定されませんでした。")
@@ -126,16 +130,44 @@ class AI_Manager():
         #会話設定
         base_prompt =   "あなたはユーザのPC上で動作するキャラクターです。以下の応答規則、キャラクター設定に従って受け答えをしてください。\n" \
                             "# 応答規則\n" \
-                            "セリフはキャラクターとして会話するように応答し、文章量は最大で3文程度としてください。\n" \
-                            "立ち絵ファイル名は下に示されたのみとし、セリフと合わせて適切なものを選択してください。\n" \
-                            "## 応答例（立ち絵ファイル名：セリフ）\n"\
-                            "平穏.png：おはようございます。\n" \
-                            "笑顔.tiff：今日もいい天気ですね。\n" \
-                            "期待.png：今日も一日頑張りましょう。\n"
-                            
+                            "応答は必ず次のスキーマに従ったJSON配列のみを出力してください。前後に説明文やコードフェンスは付けないでください。\n" \
+                            "**必ず角括弧[ ]で始まり[ ]で終わる配列にしてください。セリフが1件だけの場合でも、要素数1の配列にしてください。" \
+                            "JSONオブジェクト{ ... }だけをトップレベルに直接置くことは禁止です。**\n" \
+                            "配列の各要素が1つのセリフを表し、複数のセリフを続けて話す場合は要素を複数含めてください。全体の文章量は最大3文程度としてください。\n" \
+                            "- \"Text\": セリフ本文（文字列）\n" \
+                            "- \"Image\": 立ち絵ファイル名（下記の立ち絵ファイル名一覧から選択）\n" \
+                            "- \"Emotion\": 感情パラメータ（省略可）。スタイル名をキー、0.00〜1.00の数値を値とするオブジェクト。詳細な記載ルールはVOISONAスタイル名一覧の節を参照してください。\n" \
+                            "## 応答例（セリフが複数件のケース）\n" \
+                            "[\n" \
+                            "  { \"Text\": \"おはようございます。\", \"Image\": \"平穏.png\", \"Emotion\": { \"Normal\": 1.00 } },\n" \
+                            "  { \"Text\": \"今日もいい天気ですね。\", \"Image\": \"笑顔.tiff\", \"Emotion\": { \"Happy\": 0.70, \"Normal\": 0.30 } }\n" \
+                            "]\n" \
+                            "## 応答例（セリフが1件だけのケース。この場合も配列にすること）\n" \
+                            "[\n" \
+                            "  { \"Text\": \"おはようございます。\", \"Image\": \"平穏.png\", \"Emotion\": { \"Normal\": 1.00 } }\n" \
+                            "]\n"
+
         #立ち絵ファイル名を追記
         self.character_img_list = self.load_imgs(dir_name=self.setting.get_setting_value("ApplicationSettings.CharacterImage.Folder"))
-        base_prompt += f"# 立ち絵ファイル名\n{self.character_img_list}\n#キャラクター設定\n"
+        base_prompt += f"# 立ち絵ファイル名\n{self.character_img_list}\n"
+
+        #VoisonaTalk利用時、VOISONAスタイル名一覧を追記
+        voisona_style_names = self._load_voisona_style_names()
+        if voisona_style_names:
+            example_emotion_text = "{ " + ", ".join(
+                f"\"{name}\": {1.00 if i == 0 else 0.00:.2f}" for i, name in enumerate(voisona_style_names)
+            ) + " }"
+            base_prompt += (
+                f"# VOISONAスタイル名一覧\n{voisona_style_names}\n"
+                "Emotionオブジェクトには、上記スタイル名一覧に含まれる**すべての**スタイルを、使用しないスタイルも含めて"
+                "0.00〜1.00の値で必ず明記してください（省略しないでください）。\n"
+                "複数のスタイルに0より大きい値を指定した場合、指定値の合計に対する比率でスタイルが合成されます"
+                "（例: {\"Happy\":0.70,\"Normal\":0.30,他は0.00} は Happy 70% / Normal 30%）。\n"
+                "上記一覧に存在しないスタイル名は指定しないでください。\n"
+                f"## このライブラリでのEmotion記載例（すべてのスタイル名を含めること）\n{example_emotion_text}\n"
+            )
+
+        base_prompt += "#キャラクター設定\n"
         f= open(f"{APP_DIR}\Character_setting.txt", encoding="utf-8")
         self.Character_set_text=""
         for line in f:
@@ -159,6 +191,20 @@ class AI_Manager():
         if recent_text:
             sections.append(f"## 直近の傾向\n{recent_text}")
         return "\n\n".join(sections)
+
+    # VoisonaTalk利用時のみ、選択中音声ライブラリのスタイル名一覧を返す
+    def _load_voisona_style_names(self, debug=-1):
+        if self.setting.get_setting_value("VoiceSettings.engine") != "VoisonaTalk":
+            return None
+        model = self.setting.get_setting_value("VoiceSettings.VoisonaTalk.Model")
+        if not model or "=" not in model:
+            return None
+        try:
+            client = TTS_VoisonaTalkEngine.VoisonaTalkClient(self.setting, debug=debug)
+        except Exception as e:
+            logger.warning(f"_load_voisona_style_names: VoisonaTalkClientの初期化に失敗しました。error={e}")
+            return None
+        return client.style_names
 
     # プロファイルファイルを1件読み込む。「//」で始まる行はコメントとして除外する。
     def _read_profile_file(self, path):
@@ -223,7 +269,7 @@ class AI_Manager():
     def _do_response(self, payload: dict, response_event: str, debug: int = -1):
         #AIの指定がなかった場合
         if self.AI_client is None:
-            output_dict = {"role": "model", "parts":["AIサービスが選択されていません。"],  "token_count": 0}
+            output_dict = {"role": "model", "parts":["AIサービスが選択されていません。"], "segments": None, "token_count": 0}
             self.bus.publish(response_event, output_dict, debug=debug)
             return
 
@@ -241,10 +287,7 @@ class AI_Manager():
             react_resopnse = self.react_planing()
             character_response = self.character_response(base_dict=react_resopnse)
             total_token_count = react_resopnse["token_count"] + character_response["token_count"]
-
-            result = {"role": "model", "parts": character_response["parts"], "token_count": total_token_count}
-            self.add_talkhistory(result)
-            self.bus.publish(response_event, result, debug=debug)
+            raw_text = character_response["parts"][0]
 
         #通常の応答
         else:
@@ -256,10 +299,72 @@ class AI_Manager():
 
             input_contents = combined_prompt + past_contents
 
-            response = self.AI_client.response(input_contents=input_contents, debug = debug)
-            output_dict = {"role": "model", "parts":[response["text"]], "token_count": response["token_count"]}
+            response = self.AI_client.response(input_contents=input_contents, response_format="json", debug = debug)
+            total_token_count = response["token_count"]
+            raw_text = response["text"]
+
+        #ReAct分岐・通常分岐のどちらから来た応答も同じJSONパース・検証処理を通す
+        self._publish_ai_response(raw_text, total_token_count, response_event, debug)
+
+    # AI応答文字列（JSON配列想定）をパース・検証し、成否に応じてイベント発行・会話履歴登録を行う
+    def _publish_ai_response(self, raw_text: str, token_count: int, response_event: str, debug: int = -1):
+        parsed = self._parse_ai_response(raw_text, debug)
+        if parsed["ok"]:
+            output_dict = {"role": "model", "parts": [parsed["raw_text"]],
+                           "segments": parsed["segments"], "token_count": token_count}
             self.add_talkhistory(output_dict, debug)
             self.bus.publish(response_event, output_dict, debug=debug)
+        else:
+            logger.warning(f"_publish_ai_response: AI応答のパースに失敗しました。error={parsed['error']}, raw_text={raw_text}")
+            error_dict = {"role": "model", "parts": [""], "segments": None,
+                          "error": "生成に失敗しました。モデルの変更を推奨します。", "token_count": token_count}
+            # 会話履歴には残さない（add_talkhistoryは呼ばない）
+            self.bus.publish(response_event, error_dict, debug=debug)
+            self.bus.publish("Req_PopUpMessage", "error", "AI応答エラー", error_dict["error"])
+
+    # AI応答文字列をJSONとしてパース・検証する。
+    # 戻り値: 成功時 {"ok": True, "raw_text": <整形後JSON文字列>, "segments": [{"Text","Image","Emotion"}, ...]}
+    #         失敗時 {"ok": False, "error": "invalid_json" | "invalid_schema"}
+    def _parse_ai_response(self, raw_text: str, debug: int = -1) -> dict:
+        if debug >= 0:
+            indent = "  " * debug
+            print(f"{indent}AI_main.py _parse_ai_response() called.")
+            print(f"{indent}raw_text = {raw_text}")
+            debug = debug + 1 if debug >= 0 else -1
+
+        # コードフェンス（```json ... ``` 等）の除去
+        cleaned = raw_text.strip()
+        cleaned = re.sub(r"^```[a-zA-Z]*\n?", "", cleaned)
+        cleaned = re.sub(r"\n?```$", "", cleaned)
+        cleaned = cleaned.strip()
+
+        try:
+            data = json.loads(cleaned)
+        except json.JSONDecodeError as e:
+            logger.warning(f"_parse_ai_response: JSONパースに失敗しました。error={e}")
+            return {"ok": False, "error": "invalid_json"}
+
+        if not isinstance(data, list):
+            logger.warning(f"_parse_ai_response: トップレベルがlistではありません。type={type(data)}")
+            return {"ok": False, "error": "invalid_schema"}
+
+        segments = []
+        for item in data:
+            if not isinstance(item, dict) or "Text" not in item or "Image" not in item:
+                logger.warning(f"_parse_ai_response: スキーマ不備の要素があります。item={item}")
+                return {"ok": False, "error": "invalid_schema"}
+            segments.append({
+                "Text": item["Text"],
+                "Image": item["Image"],
+                "Emotion": item.get("Emotion") or {}
+            })
+
+        raw_json_str = json.dumps(data, ensure_ascii=False)
+        if debug >= 0:
+            indent = "  " * debug
+            print(f"{indent}parse success. segments = {segments}")
+
+        return {"ok": True, "raw_text": raw_json_str, "segments": segments}
 
     def _do_summary(self, payload: dict, response_event: str, debug: int = -1):
         scope    = payload["scope"]
@@ -452,7 +557,7 @@ class AI_Manager():
 
         input_contents = priming + [{"role": "user", "parts": [task_prompt]}]
 
-        response = self.AI_client.response(input_contents=input_contents, debug=debug)
+        response = self.AI_client.response(input_contents=input_contents, response_format="json", debug=debug)
         result = {"role": "model", "parts": [response["text"]], "token_count": response["token_count"]}
         return result
 
