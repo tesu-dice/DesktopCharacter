@@ -38,9 +38,7 @@ EXCLUDE_PATHS = [
     "private/",
     # 開発予定（過去のフォルダ配置も含む）
     # ※開発ログフォルダは要件定義・設計方針などを公開するため除外しない（作業ログはEXCLUDE_GLOBSで除外）
-    "docs/開発予定/",
-    "開発予定/",
-    "今後の開発予定メモ/",
+    "docs/",
     # 立ち絵などの画像素材
     "立ち絵/",
     "bb.png",
@@ -53,7 +51,7 @@ EXCLUDE_PATHS = [
     "search_results.csv",
     "memo.txt",
     # このスクリプト自身
-    "scripts/make_portfolio_repo.py",
+    "scripts/",
 ]
 
 # 履歴ごと削除するファイル名パターン（全フォルダが対象）
