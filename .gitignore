@@ -18,3 +18,4 @@ client_secret.json
 oauth_token.json
 google_calendar_cache.json
 application.log
+launcher.log
