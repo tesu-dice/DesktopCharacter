@@ -16,6 +16,7 @@ from typing import Dict, Any, List, Optional
 import logging
 
 from ai_tools.tool_base import BaseTool
+from services.config_controller import APP_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,6 @@ class GetCalendarInfoTool(BaseTool):
         return (
             "Googleカレンダー（マイカレンダー内の全カレンダー）の予定と、期限の近いGoogleタスクを確認します。"
             "直近24時間・今後24時間（合計48時間）分の情報を返します。"
-            "利用にはclient_secret.jsonの配置と、起動時のGoogle認証が必要です。"
             "情報はバックグラウンドで定期取得されたキャッシュのため、多少古い場合があります。"
         )
 
@@ -43,9 +43,12 @@ class GetCalendarInfoTool(BaseTool):
         return {"type": "object", "properties": {}}
 
     def _get_cache_path(self) -> str:
-        """google_calendar_cache.jsonの絶対パスを返す。get_user_activity_summary_tool.pyと同じパターン。"""
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        return os.path.join(current_dir, "..", "google_calendar_cache.json")
+        """
+        google_calendar_cache.jsonの絶対パスを返す。
+        書き込み側（GoogleCalendarCollector）と同じくAPP_DIR直下を参照する。
+        __file__基準だとexe化時にsys._MEIPASS（一時展開先）を指してしまうため使わない。
+        """
+        return os.path.join(APP_DIR, "google_calendar_cache.json")
 
     def _load_cache(self) -> Optional[Dict[str, Any]]:
         """キャッシュJSONを読む。存在しない/壊れている場合はNoneを返す。"""

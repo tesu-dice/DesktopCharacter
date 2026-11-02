@@ -4,41 +4,26 @@ import os
 # zoneinfoはIANA形式の文字列を扱うために使用していたため、必須ではなくなりますが、
 # 将来的な拡張性のために残しておいても問題ありません。
 from zoneinfo import ZoneInfo 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # スコープ設定
-SCOPES = [
+[
     "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/tasks"
 ]
 CLIENT_SECRET_FILE = "client_secret.json"
-OAUTH_TOKEN_FILE = "oauth_token.json"
 
 
 class GoogleScheduleControl:
     def __init__(self):
-        creds = None
-        if os.path.exists(OAUTH_TOKEN_FILE):
-            #トークンファイルがあれば参照
-            #creds = Credentials.from_authorized_user_file(OAUTH_TOKEN_FILE, SCOPES)
-            print("トークンファイルを探さずに処理を行います。")
-
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    CLIENT_SECRET_FILE, SCOPES
-                )
-                creds = flow.run_local_server(port=0, access_type="offline", prompt="consent")
-
-            # トークンをjsonアフィルとして残す
-            with open(OAUTH_TOKEN_FILE, "w") as token:
-                token.write(creds.to_json())
+        # トークンはファイルに保存せず、メモリの中だけで扱う（実行のたびにブラウザで承認する）。
+        # アプリ本体（GoogleCalendarCollector）が使う oauth_token.json と混ざらないようにするため。
+        flow = InstalledAppFlow.from_client_secrets_file(
+            CLIENT_SECRET_FILE, SCOPES
+        )
+        creds = flow.run_local_server(port=0, access_type="offline", prompt="consent")
 
         self.calendar_service = build("calendar", "v3", credentials=creds)
         self.tasks_service = build("tasks", "v1", credentials=creds)
@@ -158,9 +143,9 @@ class GoogleScheduleControl:
 def main():
     try:
         gcal = GoogleScheduleControl()
-        start_date = datetime.date(2026, 9, 1)
+        start_date = datetime.date(2026, 10, 1)
         
-        end_date = datetime.date(2026, 10, 1)
+        end_date = datetime.date(2026, 11, 1)
 
         current_date = start_date
         while current_date <= end_date:

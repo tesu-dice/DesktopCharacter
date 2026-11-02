@@ -5,6 +5,7 @@ from typing import Dict, Any, List
 import logging
 
 from ai_tools.tool_base import BaseTool
+from services.config_controller import APP_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +44,9 @@ class GetUserActivitySummaryTool(BaseTool):
 
     def _get_user_logs_dir(self) -> str:
         """user_logsディレクトリの絶対パスを返す。"""
-        # ai_tools/get_user_activity_summary_tool.py から見て、
-        # ../user_logs が user_logs ディレクトリになる
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        return os.path.join(current_dir, "..", "user_logs")
+        # 書き込み側（UserDataLogger）と同じくAPP_DIR/user_logsを参照する。
+        # __file__基準だとexe化時にsys._MEIPASS（一時展開先）を指してしまうため使わない。
+        return os.path.join(APP_DIR, "user_logs")
 
     def _load_data_from_file(self, date_str: str) -> Dict[str, Any]:
         """指定日のログファイルを読み込む。"""

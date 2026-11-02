@@ -415,7 +415,8 @@ def get_default_data() -> Dict[str, Any]:
                         "get_calendar_info": {
                             "name": "Googleカレンダーの予定",
                             "description": "Googleカレンダーの予定・タスクを取得・利用します。"
-                                            "利用にはclient_secret.jsonの配置と、起動時のGoogle認証が必要です。",
+                                            "利用にはclient_secret.jsonの配置が必要です。初回のみブラウザでの承認が必要で、以降は自動で連携します。"
+                                            "変更はアプリを終了して起動し直した後に反映されます。",
                             "type": "bool",
                             "value": False
                         }
@@ -437,7 +438,17 @@ def get_default_data() -> Dict[str, Any]:
                                             "特定のカレンダーだけに絞りたい場合や、共有・購読カレンダーを追加したい場合は"
                                             "カレンダーID（Googleカレンダーの設定画面で確認できます）をカンマ区切りで入力してください。",
                             "type": "str",
-                            "value": ""
+                            "value": "",
+                            # 設定画面には表示しない（config.jsonを直接編集すれば使える）
+                            "hidden": True
+                        },
+                        "ApproveEveryStart": {
+                            "name": "毎回承認する（承認情報を保存しない）",
+                            "description": "オンにすると承認情報をパソコンに保存せず、起動のたびにブラウザでの承認が必要になります。"
+                                            "保存済みの承認情報は次回の起動時に削除されます。"
+                                            "変更はアプリを終了して起動し直した後に反映されます。",
+                            "type": "bool",
+                            "value": False
                         }
                     }
                 }
