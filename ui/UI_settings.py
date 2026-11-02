@@ -409,6 +409,9 @@ class UI(tk.Toplevel):
 
             # Case 2: このノードが実際の設定項目である場合 ('value' を持つ)
             elif isinstance(value_node, dict) and "value" in value_node:
+                # 'hidden: True' の項目は画面に出さない（値は保存時にそのまま残る）
+                if value_node.get("hidden"):
+                    continue
                 item = self.settings.get_setting_item(full_path)
                 if item: # SettingItemオブジェクトが取得できた場合
                     simple_item_frame = ttk.Frame(parent_frame)

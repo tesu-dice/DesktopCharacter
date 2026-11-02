@@ -17,7 +17,7 @@ from services.release_check import check_nowver_is_newestver
 from services.WindowsInfoCollecter import get_datetime
 from ui.TTS_VoiceVoxEngine import start_server
 from ui import TTS_VoisonaTalkEngine
-from collectors.GoogleCalendarCollector import GoogleCalendarCollector
+from collectors.GoogleCalendarCollector import GoogleCalendarCollector, StartupStatus
 
 
 
@@ -81,7 +81,9 @@ class myapp():
     def _setup_event_listeners(self):
         #アプリケーションの起動メッセージ(サーバの起動完了後)
         self.bus.subscribe("application start", self.ui.start_TTS_Server)
-        self.bus.subscribe("Start_TTS_Server", self.app_start_message)
+        self.bus.subscribe("application start", self.CalendarCollector.start)
+            #TTSサーバの起動とGoogleカレンダー連携の起動時の結果（最大1分）がそろったら表示する
+        self.bus.subscribe_when(["Start_TTS_Server", "OnCalendarStartupStatus"], self.app_start_message)
 
         #アプリUI用の整理
         self.bus.subscribe("Req_PopUpMessage", self.ui.show_message_box)
@@ -119,7 +121,7 @@ class myapp():
         self.bus.subscribe("SettingsUpdated", self.on_settings_updated)
 
     #アプリケーション起動時の送信メッセージ
-    def app_start_message(self, serverid, debug = -1):
+    def app_start_message(self, serverid, calendar_status, debug = -1):
         _start_info_texts = ""
         _start_info_error = ""
         debug = -1
@@ -127,6 +129,7 @@ class myapp():
             indent = "  " * debug
             print(f"{indent}main.py app_start_message() called.")
             print(f"{indent}serverid = {serverid}")
+            print(f"{indent}calendar_status = {calendar_status}")
             debug = debug + 1 if debug >= 0 else -1
         
         #リリースバージョンの確認
@@ -162,6 +165,20 @@ class myapp():
                 _start_info_error += f"VoiceVoxサーバの起動に失敗しました。"
                 logging.error("VoiceVoxサーバの起動に失敗しました。")
             
+        #Googleカレンダー連携（失敗の詳しいメッセージはGoogleCalendarCollectorが別に出すため、_start_info_errorには加えない）
+        _calendar_texts = {
+            StartupStatus.OFF: "連携しない（OFF）",
+            StartupStatus.SUCCESS: "成功",
+            StartupStatus.WAITING: "承認待ち（ブラウザで承認してください）",
+            StartupStatus.CONNECTING: "接続中（つながると自動で連携します）",
+            StartupStatus.CLIENT_SECRET: "失敗（client_secret.jsonの問題）",
+            StartupStatus.NOT_APPROVED: "失敗（承認できなかった）",
+            StartupStatus.INVALID_TOKEN: "失敗（トークンが無効）",
+            StartupStatus.NETWORK: "通信エラー（ネットワークにつながると自動で連携します）",
+            StartupStatus.API_DISABLED: "失敗（予定を取得できない）",
+        }
+        _start_info_texts += f"---Googleカレンダー連携---\n{_calendar_texts.get(calendar_status, calendar_status)}\n\n"
+
 
 
         
@@ -185,7 +202,7 @@ class myapp():
         if hasattr(self, 'update_id'):
             self.ui.after_cancel(self.update_id)
 
-        # Googleカレンダーのキャッシュを削除（安全性のため）
+        # Googleカレンダーのキャッシュを削除（安全性のため）。トークンは終了時には触らない（削除は次回起動時）
         self.CalendarCollector.clear_cache()
 
         # VoisonaTalkプロセスの終了（自アプリが起動した場合のみ。手動起動していたインスタンスは終了させない）
@@ -234,9 +251,8 @@ class myapp():
             if allow_logging_access == True:
                 self.bus.publish("Req_SummaryCatchup")
 
-            #Googleカレンダー情報の定期取得要求（権限は別概念のため独立したif文にする）
-            if self.setting.get_setting_value("ApplicationSettings.Permission.get_calendar_info") == True:
-                self.bus.publish("Req_CalendarInfo")
+            #Googleカレンダー情報の定期取得要求（権限の判定はGoogleCalendarCollectorが起動時の値で行う）
+            self.bus.publish("Req_CalendarInfo")
 
         #テスト用
 
@@ -245,9 +261,8 @@ class myapp():
         self.update_id = self.ui.after(10*1000, self.update, debug)
 
     def handle_user_message(self, input_dict, debug=-1):
-        #会話開始タイミングでのカレンダー情報の非同期更新（req_LLMの呼び出し自体は変更しない）
-        if self.setting.get_setting_value("ApplicationSettings.Permission.get_calendar_info") == True:
-            self.bus.publish("Req_CalendarInfo")
+        #会話開始タイミングでのカレンダー情報の非同期更新（権限の判定はGoogleCalendarCollectorが起動時の値で行う）
+        self.bus.publish("Req_CalendarInfo")
         self.AI_Manager.req_LLM(
             payload=input_dict,
             response_event="OnUserResponse",
